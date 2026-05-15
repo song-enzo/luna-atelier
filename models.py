@@ -109,6 +109,14 @@ class OrderLog(db.Model):
 def init_db(app):
     with app.app_context():
         db.create_all()
+        # Add gallery column for existing tables (migration)
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        columns = [c['name'] for c in inspector.get_columns('styles')]
+        if 'gallery' not in columns:
+            with db.engine.connect() as conn:
+                conn.execute(text('ALTER TABLE styles ADD COLUMN gallery TEXT DEFAULT \'[]\''))
+                conn.commit()
         admin = User.query.filter_by(username='admin').first()
         if not admin:
             admin = User(
