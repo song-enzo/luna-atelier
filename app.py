@@ -400,11 +400,13 @@ def mockup():
 
 # ========== 启动 ==========
 
-if __name__ == '__main__':
+# Auto-initialize database on gunicorn startup (for Render)
+with app.app_context():
     init_db(app)
-    # Auto-seed styles on Render (fresh DB)
     from seed import seed
     seed()
+
+if __name__ == '__main__':
     import sys
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 5000
     app.run(host='0.0.0.0', port=port, debug=True)
