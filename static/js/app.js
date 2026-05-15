@@ -2,38 +2,89 @@
 (function(){
 'use strict';
 
-// ---- Touch Carousel (Infinite Loop) ----
+// ---- Touch Carousel (Seamless Infinite Loop via Clone Method) ----
 function initCarousels(){
   document.querySelectorAll('.pdp-carousel').forEach(function(wrap){
     var track = wrap.querySelector('.track');
     if(!track) return;
-    var slides = track.children;
-    if(slides.length < 2) return;
+    var origSlides = Array.from(track.children);
+    var N = origSlides.length;
+    if(N < 2) return;
 
-    var idx = 0, startX = 0, currentX = 0, dragging = false;
+    // --- Clone setup: N+2 slides ---
+    // Clone last slide → insert before first; clone first slide → append after last
+    var firstClone = origSlides[0].cloneNode(true);
+    var lastClone = origSlides[N-1].cloneNode(true);
+    track.insertBefore(lastClone, origSlides[0]);
+    track.appendChild(firstClone);
 
-    function goTo(i, animate){
-      // Infinite loop using modulo
-      idx = ((i % slides.length) + slides.length) % slides.length;
-      if(!animate) track.style.transition = 'none';
-      else track.style.transition = 'transform .35s cubic-bezier(.25,.46,.45,.94)';
+    // All slides now (0=clone of last, 1..N=originals, N+1=clone of first)
+    var idx = 1;        // start at first real slide
+    var startX = 0;
+    var currentX = 0;
+    var dragging = false;
+    var animating = false;
+
+    // --- Build dots (only for N real slides) ---
+    var dotsContainer = wrap.querySelector('.pdp-dots');
+    if(dotsContainer){
+      dotsContainer.innerHTML = '';
+      for(var di=0; di<N; di++){
+        var dot = document.createElement('span');
+        if(di === 0) dot.className = 'active';
+        dotsContainer.appendChild(dot);
+      }
+    }
+
+    // --- Position track at idx (no animation) ---
+    function render(animate){
+      if(animate){
+        track.style.transition = 'transform .35s cubic-bezier(.25,.46,.45,.94)';
+        animating = true;
+      } else {
+        track.style.transition = 'none';
+      }
       track.style.transform = 'translateX(-' + (idx * 100) + '%)';
+      // Update dots (real slide index = idx-1 when idx in [1..N])
+      var realIdx = idx - 1;
       var dots = wrap.querySelectorAll('.pdp-dots span');
-      dots.forEach(function(d,j){ d.classList.toggle('active',j===idx); });
+      dots.forEach(function(d,j){ d.classList.toggle('active', j === realIdx); });
     }
 
+    // --- Jump correction on transitionend ---
+    function onTransitionEnd(){
+      animating = false;
+      // If at clone of last (idx=0): jump to real last (idx=N)
+      if(idx === 0){
+        idx = N;
+        render(false);
+      }
+      // If at clone of first (idx=N+1): jump to real first (idx=1)
+      else if(idx === N + 1){
+        idx = 1;
+        render(false);
+      }
+    }
+    track.addEventListener('transitionend', onTransitionEnd);
+
+    // Initial position
+    render(false);
+
+    // --- Arrow navigation ---
     function slide(dir){
-      goTo(idx + dir, true);
+      if(animating) return;
+      idx += dir;
+      render(true);
     }
 
-    // Arrows
     var prev = wrap.querySelector('.pdp-arrow-prev');
     var next = wrap.querySelector('.pdp-arrow-next');
     if(prev) prev.addEventListener('click',function(e){e.stopPropagation();slide(-1);});
     if(next) next.addEventListener('click',function(e){e.stopPropagation();slide(1);});
 
-    // Touch
+    // --- Touch events ---
     track.addEventListener('touchstart',function(e){
+      if(animating) return;
       startX = e.touches[0].clientX;
       currentX = startX;
       dragging = true;
@@ -51,42 +102,44 @@ function initCarousels(){
     track.addEventListener('touchend',function(){
       if(!dragging) return;
       dragging = false;
-      track.style.transition = 'transform .35s cubic-bezier(.25,.46,.45,.94)';
       var diff = currentX - startX;
       if(Math.abs(diff) > track.offsetWidth * 0.3){
-        var direction = diff < 0 ? 1 : -1;
-        goTo(idx + direction, true);
+        idx += (diff < 0 ? 1 : -1);
+        render(true);
       } else {
-        track.style.transform = 'translateX(-' + (idx * 100) + '%)';
+        render(false);
       }
     }, {passive:true});
 
-    // Mouse drag (desktop)
+    // --- Mouse drag (desktop) ---
     track.addEventListener('mousedown',function(e){
-      startX = e.clientX; currentX = startX; dragging = true;
+      if(animating) return;
+      startX = e.clientX;
+      currentX = startX;
+      dragging = true;
       track.style.transition = 'none';
     });
     track.addEventListener('mousemove',function(e){
       if(!dragging) return;
       currentX = e.clientX;
-      track.style.transform = 'translateX(' + (-idx * 100 + (currentX-startX)/track.offsetWidth*100) + '%)';
+      var diff = currentX - startX;
+      track.style.transform = 'translateX(' + (-idx * 100 + diff / track.offsetWidth * 100) + '%)';
     });
     track.addEventListener('mouseup',function(){
       if(!dragging) return;
       dragging = false;
-      track.style.transition = 'transform .35s cubic-bezier(.25,.46,.45,.94)';
       var diff = currentX - startX;
       if(Math.abs(diff) > track.offsetWidth * 0.3){
-        goTo(idx + (diff < 0 ? 1 : -1), true);
+        idx += (diff < 0 ? 1 : -1);
+        render(true);
       } else {
-        track.style.transform = 'translateX(-' + (idx * 100) + '%)';
+        render(false);
       }
     });
     track.addEventListener('mouseleave',function(){
       if(!dragging) return;
       dragging = false;
-      track.style.transition = 'transform .35s cubic-bezier(.25,.46,.45,.94)';
-      track.style.transform = 'translateX(-' + (idx * 100) + '%)';
+      render(false);
     });
   });
 }
