@@ -48,7 +48,7 @@
           <td>{{ order.customer.nickname or order.customer.username }}</td>
           <td>{{ order.style.name }}</td>
           <td>{{ order.total_qty }}</td>
-          <td><span class="status-badge s-{{ order.status }}">{{ STATUS_MAP[order.status] }}</span></td>
+          <td><span class="status-badge s-{{ order.status }}">{{ STATUS_MAP.get(order.status, order.status) }}</span></td>
           <td>{% if order.total_amount %}€{{ "%.2f"|format(order.total_amount) }}{% else %}-{% endif %}</td>
           <td>{{ order.created_at.strftime('%m/%d %H:%M') }}</td>
           <td><a href="{{ url_for('admin_order_detail', order_id=order.id) }}" class="btn-admin dark small">查看</a></td>

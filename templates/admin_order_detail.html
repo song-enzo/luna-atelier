@@ -8,7 +8,7 @@
 
 <div class="page-title" style="padding-bottom:12px;">
   {{ order.order_no }}
-  <span class="status-badge s-{{ order.status }}" style="margin-left:8px;vertical-align:middle;">{{ STATUS_MAP[order.status] }}</span>
+  <span class="status-badge s-{{ order.status }}" style="margin-left:8px;vertical-align:middle;">{{ STATUS_MAP.get(order.status, order.status) }}</span>
 </div>
 
 <div class="admin-table-wrap" style="padding-top:0;">
@@ -86,8 +86,8 @@
             <span>{{ log.created_at.strftime('%m/%d %H:%M') }}</span>
           </div>
           <div style="margin-top:2px;color:#333;">
-            {% if log.status_from %}{{ STATUS_MAP[log.status_from] }} → {% endif %}
-            <strong>{{ STATUS_MAP[log.status_to] }}</strong>
+            {% if log.status_from %}{{ STATUS_MAP.get(log.status_from, log.status_from) }} → {% endif %}
+            <strong>{{ STATUS_MAP.get(log.status_to, log.status_to) }}</strong>
           </div>
           {% if log.note %}
           <div style="font-size:11px;color:#888;margin-top:2px;">{{ log.note }}</div>
