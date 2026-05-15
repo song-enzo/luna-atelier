@@ -13,7 +13,7 @@
 
   <div class="cat-strip">
     <form method="GET" id="orderFilter">
-      {% for label, key in [('全部',''), ('待确认','pending'), ('制作中','cutting'), ('运输中','shipped'), ('已完成','completed')] %}
+      {% for label, key in [('全部',''), ('待确认','pending'), ('已确认','confirmed'), ('裁剪中','cutting'), ('车缝中','sewing'), ('质检中','qc'), ('运输中','shipped'), ('已完成','completed')] %}
       <button type="submit" name="status" value="{{ key }}" class="cat-btn {% if status_filter == key %}active{% endif %}"
         onclick="this.form.submit()">{{ label }}</button>
       {% endfor %}

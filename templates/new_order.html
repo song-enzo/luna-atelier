@@ -1,11 +1,160 @@
 {% extends "base.html" %}
 {% block title %}{{ style.name }} · LUNA ATELIER{% endblock %}
 {% block content %}
-{% set hide_alerts = true %}
+{% set hide_alerts = false %}
 
 <style>
 @media(max-width:480px){
   .pdp-layout{grid-template-columns:1fr !important}
+}
+
+/* Cropper Modal */
+.cropper-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.85);
+  z-index: 9999;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+.cropper-modal-overlay.active {
+  display: flex;
+}
+.cropper-modal-box {
+  background: #fff;
+  border-radius: 4px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.cropper-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+  font-weight: 600;
+}
+.cropper-modal-header button {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #888;
+  font-family: inherit;
+}
+.cropper-img-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 300px;
+  background: #f5f5f5;
+}
+.cropper-img-wrap img {
+  max-width: 100%;
+  display: block;
+}
+.cropper-modal-footer {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid #eee;
+}
+.cropper-modal-footer input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  font-size: 13px;
+  font-family: inherit;
+  border-radius: 2px;
+}
+.cropper-modal-footer input:focus {
+  border-color: #111;
+  outline: none;
+}
+.cropper-modal-footer button {
+  padding: 8px 18px;
+  background: #111;
+  color: #fff;
+  border: none;
+  border-radius: 2px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.cropper-modal-footer button:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+/* Color Items List */
+.color-items-list {
+  margin-top: 10px;
+}
+.color-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #f5f5f5;
+  font-size: 13px;
+}
+.color-item:last-child {
+  border-bottom: none;
+}
+.color-item .ci-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #eee;
+  flex-shrink: 0;
+}
+.color-item .ci-name {
+  flex: 1;
+  color: #333;
+}
+.color-item .ci-qty {
+  font-weight: 500;
+  min-width: 30px;
+  text-align: center;
+  color: #111;
+}
+.color-item .ci-del {
+  background: none;
+  border: none;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 2px;
+  line-height: 1;
+  font-family: inherit;
+}
+.color-item .ci-del:hover {
+  color: #c41e3a;
+}
+.color-item .ci-qty-btn {
+  background: none;
+  border: 1px solid #ddd;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #333;
+  font-family: inherit;
+  line-height: 1;
 }
 </style>
 
@@ -54,21 +203,24 @@
       {% if style.price %}<div class="price">€ {{ '%.2f'|format(style.price) }}</div>{% endif %}
     </div>
 
-    <!-- Color Selection -->
+    <!-- Color Selection with Multi-Item Management -->
     <div class="opt-block">
-      <div class="label">颜色</div>
-      <div class="swatch-row">
+      <div class="label">颜色 / 花色</div>
+      <div class="swatch-row" id="presetSwatches">
         {% set colors = {'米白':'#f5f0eb','黑色':'#1a1a1a','灰色':'#888','藏青':'#1b2a4a','驼色':'#c4a882','卡其':'#b8a88a','酒红':'#722f37','白色':'#f8f8f8','粉色':'#e8a0bf','军绿':'#5c6b4f','香槟':'#e8d5b7','焦糖':'#a67c52','燕麦':'#d4c5a9','蓝色':'#5b7cb8','红色':'#c41e3a','碎花':'#c4958a','花呢':'#b8a88a','牛仔':'#3a6a9a'} %}
         {% set name_parts = style.name.split('-') %}
         {% set default_color = name_parts[-1] if name_parts|length > 1 else '黑色' %}
         {% for c in ['米白','黑色','灰色','藏青','驼色','卡其','酒红','白色','粉色'] %}
         {% set bg = colors.get(c, '#ddd') %}
-        <div class="swatch-circle {% if c == default_color %}active{% endif %}" style="background:{{ bg }};" data-color="{{ c }}" title="{{ c }}"></div>
+        <div class="swatch-circle" style="background:{{ bg }};" data-color="{{ c }}" title="{{ c }}"></div>
         {% endfor %}
-        <button type="button" class="swatch-upload-btn" onclick="document.getElementById('colorUpload').click()">📷 上传花版</button>
-        <input type="file" id="colorUpload" accept="image/*" style="display:none;" onchange="uploadColorSwatch(this)">
-        <input type="hidden" name="color" id="colorField" value="{{ default_color }}">
+        <button type="button" class="swatch-upload-btn" id="openCropperBtn">📷 上传花版</button>
       </div>
+      <input type="file" id="cropperFileInput" accept="image/*" style="display:none;">
+
+      <!-- Color Items List (multi-color items) -->
+      <div class="color-items-list" id="colorItemsList"></div>
+      <div style="font-size:11px;color:#aaa;margin-top:4px;">点击预设色块或上传花版图片框选颜色区域添加到订单</div>
     </div>
 
     <!-- Size Selection -->
@@ -78,18 +230,14 @@
         {% for s in ['XS','S','M','L','XL','2XL','3XL'] %}
         <button type="button" class="size-btn {% if s == 'M' %}active{% endif %}" data-size="{{ s }}">{{ s }}</button>
         {% endfor %}
-        <button type="button" class="size-btn custom">✏️ 定制</button>
+        <button type="button" class="size-btn custom" id="customSizeBtn">✏️ 定制</button>
       </div>
     </div>
 
-    <!-- Quantity -->
-    <div class="opt-block">
-      <div class="label">数量</div>
-      <div class="qty-bar">
-        <button type="button" class="qty-dec">−</button>
-        <span class="val">1</span>
-        <button type="button" class="qty-inc">+</button>
-      </div>
+    <!-- Custom Size Input (hidden by default) -->
+    <div class="opt-block" id="customSizeBlock" style="display:none;border-bottom:6px solid #f8f8f8;">
+      <div class="label">定制尺码</div>
+      <textarea class="remark-inp" id="customSizeInput" placeholder="请输入定制尺寸，如：肩宽38cm、胸围90cm、衣长62cm…" rows="2"></textarea>
     </div>
 
     <!-- Remark -->
@@ -116,5 +264,22 @@
       </button>
     </div>
   </form>
+</div>
+
+<!-- Cropper Modal -->
+<div class="cropper-modal-overlay" id="cropperModal">
+  <div class="cropper-modal-box">
+    <div class="cropper-modal-header">
+      <span>框选颜色区域</span>
+      <button type="button" id="closeCropperBtn">&times;</button>
+    </div>
+    <div class="cropper-img-wrap" id="cropperImgWrap">
+      <img id="cropperImage" src="" alt="Upload preview">
+    </div>
+    <div class="cropper-modal-footer">
+      <input type="text" id="cropperColorName" placeholder="颜色名称（如：碎花蓝、条纹红）" maxlength="50">
+      <button type="button" id="cropperConfirmBtn" disabled>确认添加</button>
+    </div>
+  </div>
 </div>
 {% endblock %}
