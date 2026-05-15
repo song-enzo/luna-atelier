@@ -34,7 +34,7 @@
   <a href="{{ url_for('new_order', style_id=style.id) }}" class="cat-card" style="text-decoration:none;color:inherit;">
     <div class="img">
       {% if style.image_path %}
-      <img src="{{ url_for('uploaded_file', filename=style.image_path) }}" alt="{{ style.name }}" loading="lazy">
+      <img src="{{ url_for('static', filename=style.image_path) }}" alt="{{ style.name }}" loading="lazy">
       {% else %}
       <div style="width:100%;height:100%;background:#f0ece6;display:flex;align-items:center;justify-content:center;color:#ccc;">暂无图片</div>
       {% endif %}

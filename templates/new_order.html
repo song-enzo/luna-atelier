@@ -168,19 +168,17 @@
       <div class="track" id="pdpTrack">
         <div class="slide">
           {% if style.image_path %}
-          <img src="{{ url_for('uploaded_file', filename=style.image_path) }}" alt="{{ style.name }}">
+          <img src="{{ url_for('static', filename=style.image_path) }}" alt="{{ style.name }}">
           {% else %}
           <div style="width:100%;height:100%;background:#f0ece6;display:flex;align-items:center;justify-content:center;color:#ccc;">暂无图片</div>
           {% endif %}
         </div>
-        <!-- Same image for now, will have multiple angles later -->
+        {% set gallery = style.gallery|default('[]')|from_json %}
+        {% for img in gallery %}
         <div class="slide">
-          {% if style.image_path %}
-          <img src="{{ url_for('uploaded_file', filename=style.image_path) }}" alt="{{ style.name }}" style="transform:scaleX(-1)">
-          {% else %}
-          <div style="width:100%;height:100%;background:#f0ece6;display:flex;align-items:center;justify-content:center;color:#ccc;">暂无图片</div>
-          {% endif %}
+          <img src="{{ url_for('static', filename=img) }}" alt="{{ style.name }}" loading="lazy">
         </div>
+        {% endfor %}
       </div>
       <div class="pdp-arrows">
         <button class="pdp-arrow-prev">‹</button>

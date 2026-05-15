@@ -7,3 +7,6 @@ instance/
 uploads/
 *.db
 .DS_Store
+download_*.py
+download_*.sh
+static/images/IMAGE_MAP.json

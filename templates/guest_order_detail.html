@@ -22,7 +22,7 @@
     <div class="value" style="font-size:12px;color:#888;">{{ order.style.fabric_info if order.style else '' }}</div>
     {% if order.style and order.style.image_path %}
     <div style="margin-top:8px;">
-      <img src="{{ url_for('uploaded_file', filename=order.style.image_path) }}" style="width:100%;max-width:240px;border-radius:2px;">
+      <img src="{{ url_for('static', filename=order.style.image_path) }}" style="width:100%;max-width:240px;border-radius:2px;">
     </div>
     {% endif %}
   </div>

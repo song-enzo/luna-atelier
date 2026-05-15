@@ -32,6 +32,7 @@ class Style(db.Model):
     description = db.Column(db.Text)
     fabric_info = db.Column(db.String(500))
     image_path = db.Column(db.String(300))
+    gallery = db.Column(db.Text, default='[]')  # JSON array of extra image paths
     price = db.Column(db.Float, default=0)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.now)

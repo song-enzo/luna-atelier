@@ -18,6 +18,13 @@ app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 db.init_app(app)
+
+@app.template_filter('from_json')
+def from_json_filter(value):
+    try:
+        return json.loads(value) if value else []
+    except:
+        return []
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -395,6 +402,9 @@ def mockup():
 
 if __name__ == '__main__':
     init_db(app)
+    # Auto-seed styles on Render (fresh DB)
+    from seed import seed
+    seed()
     import sys
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 5000
     app.run(host='0.0.0.0', port=port, debug=True)

@@ -147,7 +147,7 @@
           <td>{{ style.name }}</td>
           <td>
             {% if style.image_path %}
-            <img src="{{ url_for('uploaded_file', filename=style.image_path) }}" alt="{{ style.name }}" style="width:48px;height:48px;object-fit:cover;border-radius:2px;border:1px solid #eee;">
+            <img src="{{ url_for('static', filename=style.image_path) }}" alt="{{ style.name }}" style="width:48px;height:48px;object-fit:cover;border-radius:2px;border:1px solid #eee;">
             {% else %}
             <span style="color:#ccc;">无图</span>
             {% endif %}
