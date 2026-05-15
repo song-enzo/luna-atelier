@@ -11,7 +11,7 @@
 </div>
 <div class="cat-strip">
   <form method="GET" id="catForm">
-    {% for label, key in [('全部',''), ('西装','blazer'), ('连衣裙','dress'), ('大衣','coat'), ('上衣','top'), ('裤装','pants'), ('半裙','skirt'), ('套装','suit')] %}
+    {% for label, key in [('全部',''), ('连衣裙','dress'), ('衬衫','shirt'), ('外套','jacket'), ('裤类','pants'), ('裙类','skirt'), ('大衣','coat'), ('背心','vest'), ('套装','suit')] %}
     <button type="submit" name="cat" value="{{ key }}" class="cat-btn {% if cat == key %}active{% endif %}"
       onclick="this.form.submit()">{{ label }}</button>
     {% endfor %}

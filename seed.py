@@ -1,112 +1,71 @@
-"""Seed database with styles and real clothing images for LUNA ATELIER"""
+"""Seed database with 8 clean categories, 1 style each with 2-3 real photos"""
 import sys, os, json
 sys.path.insert(0, os.path.dirname(__file__))
 from app import app, db
 from models import User, Style
 
 STYLES = [
-    # === 连衣裙 Dresses ===
-    (10001, "法式碎花连衣裙-白底", "白色底碎花连衣裙，V领收腰", "粘纤60% 涤纶40%", 68.00),
-    (10002, "法式碎花连衣裙-蓝底", "蓝色底碎花连衣裙，优雅飘逸", "粘纤60% 涤纶40%", 68.00),
-    (10003, "修身针织连衣裙-黑色", "黑色修身针织连衣裙，百搭款", "粘纤50% 涤纶50%", 75.00),
-    (10004, "A字连衣裙-米白", "米白色A字连衣裙，简约大方", "棉50% 粘纤50%", 59.00),
-    (10005, "吊带连衣裙-酒红", "酒红色吊带连衣裙，性感优雅", "涤纶70% 粘纤30%", 55.00),
-    (10006, "衬衫连衣裙-条纹蓝", "蓝色条纹衬衫连衣裙，清爽", "棉60% 涤纶40%", 72.00),
-
-    # === 裤子 Pants ===
-    (20001, "高腰阔腿裤-黑色", "黑色高腰阔腿裤，垂感面料", "涤纶60% 粘纤40%", 55.00),
-    (20002, "高腰阔腿裤-卡其", "卡其色高腰阔腿裤", "涤纶60% 粘纤40%", 55.00),
-    (20003, "高腰阔腿裤-藏青", "藏青色高腰阔腿裤", "涤纶60% 粘纤40%", 55.00),
-    (20004, "九分烟管裤-黑色", "黑色九分烟管裤，利落干练", "棉50% 涤纶50%", 48.00),
-    (20005, "九分烟管裤-灰色", "灰色九分烟管裤", "棉50% 涤纶50%", 48.00),
-    (20006, "休闲直筒裤-军绿", "军绿色休闲直筒裤", "棉60% 涤纶40%", 52.00),
-
-    # === 外套 Blazers ===
-    (30001, "西装外套-米白", "经典米白色女式西装外套", "涤纶65% 棉35%", 89.00),
-    (30002, "西装外套-黑色", "经典黑色女式西装外套", "涤纶65% 棉35%", 89.00),
-    (30003, "西装外套-藏青", "藏青色女式西装外套", "涤纶65% 棉35%", 89.00),
-    (30004, "西装外套-驼色", "驼色女式西装外套", "涤纶65% 棉35%", 89.00),
-    (30005, "小香风外套-米白", "米白色小香风外套，花呢面料", "涤纶70% 粘纤30%", 95.00),
-    (30006, "小香风外套-粉色", "粉色小香风外套", "涤纶70% 粘纤30%", 95.00),
-
-    # === 大衣 Coats ===
-    (40001, "双面大衣-驼色", "驼色双面羊毛大衣", "羊毛80% 涤纶20%", 180.00),
-    (40002, "双面大衣-黑色", "黑色双面羊毛大衣", "羊毛80% 涤纶20%", 180.00),
-    (40003, "双面大衣-灰色", "灰色双面羊毛大衣", "羊毛80% 涤纶20%", 180.00),
-    (40004, "双面大衣-焦糖", "焦糖色双面羊毛大衣", "羊毛80% 涤纶20%", 180.00),
-    (40005, "风衣-卡其", "卡其色经典风衣", "棉60% 涤纶40%", 150.00),
-    (40006, "风衣-米白", "米白色风衣", "棉60% 涤纶40%", 150.00),
-
-    # === 半裙 Skirts ===
-    (50001, "A字半身裙-黑色", "黑色A字半身裙", "涤纶70% 粘纤30%", 42.00),
-    (50002, "A字半身裙-米白", "米白色A字半身裙", "涤纶70% 粘纤30%", 42.00),
-    (50003, "百褶裙-灰色", "灰色百褶裙，学院风", "涤纶60% 粘纤40%", 45.00),
-    (50004, "包臀裙-黑色", "黑色包臀裙，职业干练", "涤纶65% 棉35%", 38.00),
-    (50005, "花呢半裙-米白", "米白色花呢半裙，小香风", "涤纶70% 粘纤30%", 48.00),
-    (50006, "牛仔半裙-蓝色", "蓝色牛仔半裙", "棉100%", 45.00),
-
-    # === 上衣/背心 Tops ===
-    (60001, "纯棉T恤-白色", "白色纯棉T恤，百搭款", "棉100%", 28.00),
-    (60002, "纯棉T恤-黑色", "黑色纯棉T恤", "棉100%", 28.00),
-    (60003, "真丝背心-香槟", "香槟色真丝吊带背心", "桑蚕丝100%", 45.00),
-    (60004, "真丝背心-黑色", "黑色真丝吊带背心", "桑蚕丝100%", 45.00),
-    (60005, "针织背心-燕麦", "燕麦色针织背心", "羊毛50% 棉50%", 38.00),
-    (60006, "针织背心-灰色", "灰色针织背心", "羊毛50% 棉50%", 38.00),
-
-    # === 套装 Suits ===
-    (70001, "西装套裙-黑色", "黑色西装套裙，职业装", "涤纶65% 棉35%", 120.00),
-    (70002, "西装套裙-藏青", "藏青色西装套裙", "涤纶65% 棉35%", 120.00),
-    (70003, "西装套裤-黑色", "黑色西装套裤", "涤纶65% 棉35%", 130.00),
-    (70004, "西装套裤-灰色", "灰色西装套裤", "涤纶65% 棉35%", 130.00),
-    (70005, "小香风套装-米白", "米白色小香风套装", "涤纶70% 粘纤30%", 148.00),
-    (70006, "小香风套装-粉色", "粉色小香风套装", "涤纶70% 粘纤30%", 148.00),
+    # 8 categories, 1 style each
+    ("连衣裙", "连衣裙", "优雅女式连衣裙，V领收腰设计", "涤纶60% 粘纤40%", 69.00, "dress"),
+    ("衬衫", "衬衫", "经典女式衬衫，简约百搭", "棉60% 涤纶40%", 55.00, "shirt"),
+    ("外套", "外套", "时尚女式外套，气质通勤", "涤纶65% 棉35%", 89.00, "jacket"),
+    ("裤类", "裤类", "高腰女式长裤，垂感面料", "涤纶60% 粘纤40%", 55.00, "pants"),
+    ("裙类", "裙类", "女式半身裙，优雅飘逸", "涤纶70% 粘纤30%", 45.00, "skirt"),
+    ("大衣", "大衣", "长款女式大衣，保暖有型", "羊毛80% 涤纶20%", 180.00, "coat"),
+    ("背心", "背心", "女式背心，内搭外穿皆可", "棉50% 涤纶50%", 35.00, "vest"),
+    ("套装", "套装", "女式西装套装，干练职业", "涤纶65% 棉35%", 128.00, "suit"),
 ]
 
 def img_path(code, n):
-    return f"images/style_{code}_{n}.jpg"
+    """Returns path relative to static/ like images/dress_1.jpg"""
+    return f"images/{code}_{n}.jpg"
 
-def gallery_list(code):
-    """Return gallery images for a style (excluding primary)"""
+def gallery_list(code, total=3):
+    """Return gallery images for a style (all except primary)"""
     paths = []
-    n = 2
-    while os.path.exists(os.path.join(os.path.dirname(__file__), 'static', img_path(code, n))):
-        paths.append(img_path(code, n))
-        n += 1
+    for n in range(2, total + 1):
+        p = img_path(code, n)
+        full = os.path.join(os.path.dirname(__file__), 'static', p)
+        if os.path.exists(full):
+            paths.append(p)
     return json.dumps(paths)
 
 def seed():
     with app.app_context():
         db.create_all()
-        
+
         # Check admin
         admin = User.query.filter_by(username='admin').first()
         if not admin:
             admin = User(username='admin', nickname='管理员', role='admin')
             admin.set_password('admin123')
             db.session.add(admin)
-        
-        # Check if already seeded
+
+        # Check if already seeded with new system
         existing = Style.query.count()
-        if existing >= 42:
-            print(f"已有 {existing} 个款式，跳过导入")
+        first = Style.query.first()
+        if existing == 8 and first and first.code == '连衣裙':
+            print(f"✅ 已有 8 个新款式，跳过导入")
             return
-        
-        # Clear old styles
+
+        # Clear old styles (re-seed)
         Style.query.delete()
-        
-        for code, name, desc, fabric, price in STYLES:
-            primary = img_path(code, 1)
-            gallery = gallery_list(code)
+
+        for idx, (name, desc, fabric, price, img_code) in enumerate(
+            [(s[1], s[2], s[3], s[4], s[5]) for s in STYLES]
+        ):
+            code = STYLES[idx][0]  # category name as code
+            primary = img_path(img_code, 1)
+            gallery = gallery_list(img_code)
             s = Style(
-                name=name, code=str(code), description=desc,
+                name=name, code=code, description=fabric,
                 fabric_info=fabric, image_path=primary,
                 gallery=gallery, price=price
             )
             db.session.add(s)
-        
+
         db.session.commit()
-        print(f"✅ 已导入 {len(STYLES)} 个款式")
-        print(f"   每款 {len(os.listdir(os.path.join(os.path.dirname(__file__), 'static', 'images'))) // 2}+ 张图片")
+        print(f"✅ 已导入 {len(STYLES)} 个款式（8品类各1款）")
 
 if __name__ == '__main__':
     seed()

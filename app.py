@@ -128,12 +128,13 @@ def guest_styles():
     
     # Category filter using stored categories
     cat_map = {
-        'blazer': ['西装'],
         'dress': ['连衣裙'],
-        'coat': ['大衣', '风衣'],
-        'top': ['真丝衬衫', '羊毛衫', '衬衫', '针织开衫', '马甲', '背心', 'T恤'],
-        'pants': ['阔腿裤', '卫衣', '夹克', '裤'],
-        'skirt': ['半身裙', '半裙'],
+        'shirt': ['衬衫'],
+        'jacket': ['外套'],
+        'pants': ['裤类'],
+        'skirt': ['裙类'],
+        'coat': ['大衣'],
+        'vest': ['背心'],
         'suit': ['套装'],
     }
     if cat and cat in cat_map:
