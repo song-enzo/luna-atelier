@@ -105,7 +105,7 @@ class OrderItem(db.Model):
     @property
     def get_total_qty(self):
         """Return sum of all size quantities"""
-        sizes = self.get_size_quantities_dict()
+        sizes = self.get_size_quantities_dict
         return sum(sizes.values())
     
     @property
