@@ -149,7 +149,7 @@ def guest_styles():
         )
     
     # Sort by newest first, limit to 30
-    styles = query.order_by(Style.created_at.desc()).limit(30).all()
+    styles = query.order_by(Style.created_at.desc()).limit(32).all()
     return render_template('guest_styles.html', styles=styles, cat=cat, q=q, categories=categories)
 
 @app.route('/guest/order/<int:style_id>', methods=['GET', 'POST'])
