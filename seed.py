@@ -1,27 +1,66 @@
-"""Seed database with 8 clean categories, 1 style each with 2-3 real photos"""
+"""Seed database: 8 categories × 4 styles = 32 styles, each with 4 images"""
 import sys, os, json
 sys.path.insert(0, os.path.dirname(__file__))
 from app import app, db
 from models import User, Style
 
 STYLES = [
-    # 8 categories, 1 style each
-    ("连衣裙", "连衣裙", "优雅女式连衣裙，V领收腰设计", "涤纶60% 粘纤40%", 69.00, "dress"),
-    ("衬衫", "衬衫", "经典女式衬衫，简约百搭", "棉60% 涤纶40%", 55.00, "shirt"),
-    ("外套", "外套", "时尚女式外套，气质通勤", "涤纶65% 棉35%", 89.00, "jacket"),
-    ("裤类", "裤类", "高腰女式长裤，垂感面料", "涤纶60% 粘纤40%", 55.00, "pants"),
-    ("裙类", "裙类", "女式半身裙，优雅飘逸", "涤纶70% 粘纤30%", 45.00, "skirt"),
-    ("大衣", "大衣", "长款女式大衣，保暖有型", "羊毛80% 涤纶20%", 180.00, "coat"),
-    ("背心", "背心", "女式背心，内搭外穿皆可", "棉50% 涤纶50%", 35.00, "vest"),
-    ("套装", "套装", "女式西装套装，干练职业", "涤纶65% 棉35%", 128.00, "suit"),
+    # (name, code, description, fabric_info, price, img_code)
+    # 连衣裙 (dress) - 4 styles
+    ("连衣裙-A字裙", "连衣裙", "A字廓形连衣裙，收腰设计，修饰身形，优雅大方。简约法式风格，适合日常通勤及约会场合。", "涤纶60% 粘纤40% 里衬100%涤纶", 69.00, "dress_1"),
+    ("连衣裙-裹身裙", "连衣裙", "经典裹身连衣裙，V领设计凸显锁骨线条，腰带收束展现纤细腰身。气质优雅，展现女性魅力。", "天丝65% 亚麻35% 里衬棉100%", 79.00, "dress_2"),
+    ("连衣裙-衬衫裙", "连衣裙", "衬衫式连衣裙，翻领设计，前开扣门襟，配有可拆卸腰带。干练知性，职场与休闲两不误。", "纯棉60% 涤纶40%", 89.00, "dress_3"),
+    ("连衣裙-吊带裙", "连衣裙", "细吊带连衣裙，蕾丝花边装饰，后背镂空设计。柔美性感，适合度假或约会穿着。", "桑蚕丝100% 里衬涤纶100%", 99.00, "dress_4"),
+    
+    # 外套 (jacket) - 4 styles
+    ("外套-短款小香风", "外套", "短款小香风外套，圆领无领设计，金属扣装饰。经典花呢面料，精致优雅，百搭不挑人。", "花呢50%羊毛50%涤纶 里衬涤纶100%", 89.00, "jacket_1"),
+    ("外套-中长款风衣", "外套", "中长款休闲风衣外套，翻领设计，双排扣门襟，肩章细节。挺括有型，通勤出街皆可。", "棉65% 涤纶35% 防水涂层", 99.00, "jacket_2"),
+    ("外套-牛仔外套", "外套", "短款牛仔外套，做旧水洗工艺，金属纽扣。复古休闲风，可搭配裙装或裤装，率性有型。", "棉100% 牛仔面料", 109.00, "jacket_3"),
+    ("外套-西装外套", "外套", "气质西装外套，平驳领，单排扣，后中开衩。立体剪裁，修身版型，职场干练首选。", "涤纶70% 粘纤30% 里衬涤纶100%", 119.00, "jacket_4"),
+    
+    # 大衣 (coat) - 4 styles
+    ("大衣-双排扣大衣", "大衣", "双排扣中长款大衣，戗驳领设计，腰带领口可调节。经典英伦风，挺括有型，保暖时尚。", "羊毛80% 涤纶20%", 180.00, "coat_1"),
+    ("大衣-浴袍大衣", "大衣", "浴袍式系带大衣，大翻领设计，无扣腰带系裹。慵懒随性，气质满分的法式风格。", "羊毛70% 羊绒10% 涤纶20%", 199.00, "coat_2"),
+    ("大衣-牛角扣大衣", "大衣", "牛角扣学院风大衣，连帽设计，前贴袋。减龄复古，经典英伦学院派风格，青春俏皮。", "羊毛60% 涤纶40%", 219.00, "coat_3"),
+    ("大衣-茧形大衣", "大衣", "茧形廓形大衣，落肩设计，插肩袖。包容性强，不挑身材，简约大气，高级感十足。", "羊毛85% 锦纶15%", 239.00, "coat_4"),
+    
+    # 针织衫 (knitwear) - 4 styles
+    ("针织衫-圆领毛衣", "针织衫", "经典圆领针织毛衣，罗纹收口袖口和下摆。纯色基础款，百搭保暖，四季皆宜的必备单品。", "羊毛50% 腈纶50%", 45.00, "knitwear_1"),
+    ("针织衫-V领开衫", "针织衫", "V领针织开衫，前开扣设计，罗纹装饰。可内搭可外穿，温柔知性，展现法式慵懒美感。", "棉70% 锦纶30%", 55.00, "knitwear_2"),
+    ("针织衫-高领打底", "针织衫", "高领修身打底针织衫，弹力面料贴合身形。作为内搭的秋冬必备款，保暖又显瘦。", "粘纤50% 锦纶50% 氨纶5%", 65.00, "knitwear_3"),
+    ("针织衫-麻花毛衣", "针织衫", "复古麻花编织毛衣，圆领宽松版型。经典绞花纹理，厚实保暖，文艺复古风满满。", "羊毛60% 腈纶40%", 75.00, "knitwear_4"),
+    
+    # 衬衫 (shirt) - 4 styles
+    ("衬衫-法式衬衫", "衬衫", "法式翻领衬衫，前胸褶皱设计，泡泡袖。优雅浪漫的法式风格，适合通勤和约会。", "棉60% 涤纶40%", 55.00, "shirt_1"),
+    ("衬衫-飘带衬衫", "衬衫", "飘带领衬衫，V领设计，长飘带可系蝴蝶结。干练不失柔美，职场女性气质之选。", "桑蚕丝100%", 65.00, "shirt_2"),
+    ("衬衫-立领衬衫", "衬衫", "立领衬衫，前暗门襟设计，简约利落。中性风格，男女皆可穿的百搭基础款。", "纯棉100% 府绸面料", 75.00, "shirt_3"),
+    ("衬衫-娃娃领衬衫", "衬衫", "彼得潘娃娃领衬衫，蕾丝花边装饰，前开扣。甜美减龄，少女感十足的复古学院风。", "棉70% 涤纶30%", 85.00, "shirt_4"),
+    
+    # 裤装 (trouser) - 4 styles
+    ("裤装-阔腿裤", "裤装", "高腰阔腿长裤，腰部褶皱设计，垂感面料。拉长腿部比例，显高显瘦的百搭神裤。", "涤纶60% 粘纤40%", 55.00, "trouser_1"),
+    ("裤装-直筒裤", "裤装", "直筒九分西裤，中腰设计，前后省道。利落干练，职场必备的经典裤装款式。", "涤纶65% 粘纤35% 氨纶5%", 65.00, "trouser_2"),
+    ("裤装-喇叭裤", "裤装", "微喇叭牛仔裤，高腰紧身设计，后口袋装饰。复古时尚，修饰腿型，展现迷人曲线。", "棉98% 氨纶2% 牛仔面料", 75.00, "trouser_3"),
+    ("裤装-工装裤", "裤装", "宽松工装裤，多口袋设计，束脚裤口。休闲帅气，街头潮流感十足的率性之选。", "棉65% 涤纶35% 斜纹面料", 85.00, "trouser_4"),
+    
+    # 裙装 (skirt) - 4 styles
+    ("裙装-百褶裙", "裙装", "高腰百褶半身裙，风琴褶设计，腰部纽扣装饰。灵动飘逸，优雅知性的通勤必备。", "涤纶70% 粘纤30% 里衬涤纶100%", 45.00, "skirt_1"),
+    ("裙装-包臀裙", "裙装", "修身包臀半身裙，后开衩设计，中腰款。勾勒迷人曲线，性感优雅的职场气质款。", "涤纶60% 粘纤40% 氨纶5%", 55.00, "skirt_2"),
+    ("裙装-A字短裙", "裙装", "A字迷你短裙，前侧假口袋装饰，腰部系带。青春活力，俏皮可爱的减龄百搭款。", "棉70% 涤纶30%", 65.00, "skirt_3"),
+    ("裙装-伞裙", "裙装", "大摆伞型半身裙，腰部松紧设计，印花图案。复古优雅，转起裙摆如花朵绽放般美丽。", "涤纶80% 粘纤20% 里衬涤纶100%", 75.00, "skirt_4"),
+    
+    # 套装 (suit) - 4 styles
+    ("套装-西装两件套", "套装", "西装外套+直筒西裤两件套，平驳领单排扣。干练职业，职场女性的经典之选。", "涤纶65% 粘纤35% 里衬涤纶100%", 128.00, "suit_1"),
+    ("套装-针织两件套", "套装", "针织开衫+吊带背心两件套，精致蕾丝装饰。温柔知性，优雅舒适的日常套装。", "粘纤50% 锦纶50%", 148.00, "suit_2"),
+    ("套装-裙装套装", "套装", "小香风短外套+半身裙套装，花呢面料镶边设计。名媛气质，精致优雅的贵气之选。", "花呢50%羊毛50%涤纶 里衬涤纶100%", 168.00, "suit_3"),
+    ("套装-马甲三件套", "套装", "西装外套+马甲+西裤三件套，戗驳领双排扣。气场全开，大女主风格的高级套装。", "涤纶70% 粘纤30% 里衬涤纶100%", 188.00, "suit_4"),
 ]
 
 def img_path(code, n):
-    """Returns path relative to static/ like images/dress_1.jpg"""
+    """Returns path relative to static/ like images/dress_1_1.jpg"""
     return f"images/{code}_{n}.jpg"
 
-def gallery_list(code, total=3):
-    """Return gallery images for a style (all except primary)"""
+def gallery_list(code, total=4):
+    """Return gallery images for a style (images 2-4)"""
     paths = []
     for n in range(2, total + 1):
         p = img_path(code, n)
@@ -33,39 +72,35 @@ def gallery_list(code, total=3):
 def seed():
     with app.app_context():
         db.create_all()
-
+        
         # Check admin
         admin = User.query.filter_by(username='admin').first()
         if not admin:
             admin = User(username='admin', nickname='管理员', role='admin')
             admin.set_password('admin123')
             db.session.add(admin)
-
-        # Check if already seeded with new system
-        existing = Style.query.count()
-        first = Style.query.first()
-        if existing == 8 and first and first.code == '连衣裙':
-            print(f"✅ 已有 8 个新款式，跳过导入")
+        
+        # Check if already seeded with 32 styles
+        existing_count = Style.query.count()
+        if existing_count >= 32:
+            print(f"✅ 已有 {existing_count} 个款式，跳过导入")
             return
-
-        # Clear old styles (re-seed)
+        
+        # Clear old styles and re-seed
         Style.query.delete()
-
-        for idx, (name, desc, fabric, price, img_code) in enumerate(
-            [(s[1], s[2], s[3], s[4], s[5]) for s in STYLES]
-        ):
-            code = STYLES[idx][0]  # category name as code
+        
+        for idx, (name, code, desc, fabric_info, price, img_code) in enumerate(STYLES):
             primary = img_path(img_code, 1)
-            gallery = gallery_list(img_code)
+            gallery = gallery_list(img_code, 4)
             s = Style(
-                name=name, code=code, description=fabric,
-                fabric_info=fabric, image_path=primary,
+                name=name, code=code, description=desc,
+                fabric_info=fabric_info, image_path=primary,
                 gallery=gallery, price=price
             )
             db.session.add(s)
-
+        
         db.session.commit()
-        print(f"✅ 已导入 {len(STYLES)} 个款式（8品类各1款）")
+        print(f"✅ 已导入 {len(STYLES)} 个款式（8品类各4款）")
 
 if __name__ == '__main__':
     seed()

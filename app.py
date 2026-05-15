@@ -131,10 +131,10 @@ def guest_styles():
         'dress': ['连衣裙'],
         'shirt': ['衬衫'],
         'jacket': ['外套'],
-        'pants': ['裤类'],
-        'skirt': ['裙类'],
         'coat': ['大衣'],
-        'vest': ['背心'],
+        'knitwear': ['针织衫'],
+        'trouser': ['裤装'],
+        'skirt': ['裙装'],
         'suit': ['套装'],
     }
     if cat and cat in cat_map:
@@ -165,15 +165,34 @@ def new_order(style_id):
         size = request.form.get('size', 'M')
         remark = request.form.get('remark', '')
         
-        # Fix: validate items_data
+        # Validate items_data with size_quantities
         validated_items = []
         for item in items_data:
-            if isinstance(item, dict) and 'qty' in item:
-                validated_items.append(item)
+            if isinstance(item, dict) and 'size_quantities' in item:
+                sq = item['size_quantities']
+                if isinstance(sq, dict):
+                    # Validate each size value is non-negative integer
+                    valid_sq = {}
+                    for k, v in sq.items():
+                        try:
+                            val = int(v)
+                            if val >= 0:
+                                valid_sq[k] = val
+                            else:
+                                valid_sq[k] = 0
+                        except (ValueError, TypeError):
+                            valid_sq[k] = 0
+                    item['size_quantities'] = valid_sq
+                    validated_items.append(item)
         
         if not validated_items:
             flash('订单数据无效，请重试', 'error')
             return redirect(url_for('new_order', style_id=style_id))
+        
+        total_qty = sum(
+            sum(sq.values()) for item in validated_items
+            for sq in [item.get('size_quantities', {})]
+        )
         
         order = Order(
             order_no=generate_order_no(),
@@ -181,7 +200,7 @@ def new_order(style_id):
             style_id=style.id,
             status='pending',
             size=size,
-            total_qty=sum(item.get('qty', 0) for item in validated_items),
+            total_qty=total_qty,
             remark=remark,
         )
         db.session.add(order)
@@ -202,7 +221,7 @@ def new_order(style_id):
                 order_id=order.id,
                 color_name=item.get('color_name', ''),
                 swatch_image=swatch_path,
-                quantity=item.get('qty', 0),
+                size_quantities=json.dumps(item.get('size_quantities', {})),
                 sort_order=i
             )
             db.session.add(oi)
@@ -392,14 +411,24 @@ def admin_order_detail(order_id):
         elif action == 'update_items':
             items_data = json.loads(request.form.get('items', '[]'))
             OrderItem.query.filter_by(order_id=order.id).delete()
+            total_qty = 0
             for i, item in enumerate(items_data):
+                sq = item.get('size_quantities', {})
+                if isinstance(sq, str):
+                    try:
+                        sq = json.loads(sq)
+                    except:
+                        sq = {}
+                sq_json = json.dumps(sq) if isinstance(sq, dict) else '{}'
+                item_qty = sum(sq.values()) if isinstance(sq, dict) else 0
+                total_qty += item_qty
                 oi = OrderItem(
                     order_id=order.id, color_name=item.get('color_name', ''),
                     swatch_image=item.get('swatch_image', ''),
-                    quantity=item.get('qty', 0), sort_order=i
+                    size_quantities=sq_json, sort_order=i
                 )
                 db.session.add(oi)
-            order.total_qty = sum(item.get('qty', 0) for item in items_data)
+            order.total_qty = total_qty
         
         db.session.commit()
         flash('更新成功', 'success')

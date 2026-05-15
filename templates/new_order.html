@@ -53,7 +53,7 @@
 .cropper-img-wrap {
   position: relative;
   flex: 1;
-  min-height: 300px;
+  min-height: 500px;
   background: #f5f5f5;
 }
 .cropper-img-wrap img {
@@ -84,15 +84,16 @@
   cursor: default;
 }
 
-/* Color Items List */
+/* Color Items List with Size Matrix */
 .color-items-list {
   margin-top: 10px;
 }
 .color-item {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 0;
   border-bottom: 1px solid #f5f5f5;
   font-size: 13px;
 }
@@ -100,9 +101,9 @@
   border-bottom: none;
 }
 .color-item .ci-swatch {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
   object-fit: cover;
   border: 1px solid #eee;
   flex-shrink: 0;
@@ -111,67 +112,124 @@
   flex: 1;
   color: #333;
   min-width: 60px;
+  font-size: 12px;
+  padding: 2px 4px;
 }
 .color-item .ci-name:focus {
   outline: 1px solid #111;
   outline-offset: 2px;
-}
-.color-item .ci-qty {
-  font-weight: 500;
-  min-width: 30px;
-  text-align: center;
-  color: #111;
 }
 .color-item .ci-del {
   background: none;
   border: none;
   color: #ccc;
   cursor: pointer;
-  font-size: 16px;
-  padding: 2px;
+  font-size: 18px;
+  padding: 2px 6px;
   line-height: 1;
   font-family: inherit;
 }
 .color-item .ci-del:hover {
   color: #c41e3a;
 }
-.color-item .ci-qty-btn {
-  background: none;
-  border: 1px solid #ddd;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 12px;
+
+/* Size Matrix inside color-item */
+.color-item .size-matrix {
+  width: 100%;
   display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 4px;
+}
+.color-item .size-matrix .sm-cell {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  color: #333;
+  min-width: 40px;
+}
+.color-item .size-matrix .sm-cell .sm-label {
+  font-size: 9px;
+  color: #999;
+  margin-bottom: 2px;
+  font-weight: 500;
+}
+.color-item .size-matrix .sm-cell .size-qty-input {
+  width: 38px;
+  height: 28px;
+  text-align: center;
+  border: 1px solid #ddd;
+  border-radius: 2px;
+  font-size: 12px;
   font-family: inherit;
-  line-height: 1;
+  color: #333;
+  outline: none;
+}
+.color-item .size-matrix .sm-cell .size-qty-input:focus {
+  border-color: #111;
+}
+.color-item .size-matrix .sm-cell .size-qty-input.focused-input {
+  border-color: #c9a96e;
+  box-shadow: 0 0 0 1px #c9a96e;
 }
 
-/* Qty Preset Buttons */
-.qty-presets {
+/* Quick fill buttons */
+.quick-fill-row {
+  width: 100%;
   display: flex;
-  gap: 2px;
+  gap: 3px;
+  align-items: center;
+  margin-top: 4px;
 }
-.qty-preset-btn {
+.quick-fill-row .qf-label {
+  font-size: 10px;
+  color: #aaa;
+  margin-right: 4px;
+}
+.quick-fill-btn {
   background: #f5f5f5;
   border: 1px solid #eee;
   border-radius: 2px;
-  padding: 2px 6px;
+  padding: 2px 8px;
   font-size: 10px;
   cursor: pointer;
   color: #666;
   font-family: inherit;
-  line-height: 1.4;
+  line-height: 1.6;
   transition: all .15s;
 }
-.qty-preset-btn:hover {
+.quick-fill-btn:hover {
   background: #111;
   color: #fff;
   border-color: #111;
+}
+
+/* Custom size input */
+.color-item .custom-size-row {
+  width: 100%;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 4px;
+}
+.color-item .custom-size-row input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 2px;
+  font-size: 11px;
+  font-family: inherit;
+  outline: none;
+  color: #333;
+}
+.color-item .custom-size-row input:focus {
+  border-color: #111;
+}
+.color-item .ci-total {
+  width: 100%;
+  font-size: 11px;
+  color: #c41e3a;
+  font-weight: 600;
+  margin-top: 4px;
 }
 
 /* Fabric History Grid */
@@ -202,6 +260,12 @@
   font-size: 9px;
   color: #aaa;
   margin-top: 2px;
+}
+
+/* Upload flash success */
+@keyframes flashSuccess {
+  0% { background: #4caf50; color: #fff; }
+  100% { background: #f5f5f5; color: #666; }
 }
 </style>
 
@@ -263,7 +327,7 @@
       </div>
       <input type="file" id="cropperFileInput" accept="image/*" style="display:none;">
 
-      <!-- Color Items List (multi-color items) -->
+      <!-- Color Items List (multi-color items with size matrix) -->
       <div class="color-items-list" id="colorItemsList"></div>
       <div style="font-size:11px;color:#aaa;margin-top:4px;">
         点击预设色块或上传花版图片框选颜色区域添加到订单 &mdash; 添加后可直接点击名称编辑颜色名
@@ -322,13 +386,13 @@
       <button type="button" class="fav">♡</button>
       <button type="submit" class="order-btn">
         下单
-        <span class="sub" id="orderSub">· 1件</span>
+        <span class="sub" id="orderSub">· 0件</span>
       </button>
     </div>
   </form>
 </div>
 
-<!-- Cropper Modal — NO color name input -->
+<!-- Cropper Modal -->
 <div class="cropper-modal-overlay" id="cropperModal">
   <div class="cropper-modal-box">
     <div class="cropper-modal-header">
@@ -355,9 +419,7 @@ function useFabricHistory(path){
     var ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0, 200, 200);
     var dataUrl = canvas.toDataURL('image/png');
-    // Try to extract a color name from the image path
     var name = '花色-' + path.split('/').pop().split('.')[0].substring(0, 8);
-    // Use the addColorItem function from app.js
     addColorItem(name, dataUrl);
   };
   img.src = '/uploads/' + path;

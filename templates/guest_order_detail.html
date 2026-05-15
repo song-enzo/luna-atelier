@@ -40,6 +40,22 @@
           {% else %}—{% endif %}
         </td>
       </tr>
+      {% for item in order.items %}
+      {% set sq = item.get_size_quantities_dict %}
+      {% if sq %}
+      <tr style="background:#fafafa;">
+        <td colspan="3" style="font-size:10px;padding:4px 8px;">
+          <strong>{{ item.color_name }}:</strong>
+          {% for s in ['XS','S','M','L','XL','2XL','3XL'] %}
+            {% if s in sq and sq[s] > 0 %}
+              <span style="display:inline-block;background:#f5f5f5;padding:1px 5px;margin:1px;border-radius:2px;">{{ s }}×{{ sq[s] }}</span>
+            {% endif %}
+          {% endfor %}
+          <span style="font-weight:600;margin-left:4px;">小计: {{ item.get_total_qty }}件</span>
+        </td>
+      </tr>
+      {% endif %}
+      {% endfor %}
     </table>
   </div>
 

@@ -2,7 +2,7 @@
 (function(){
 'use strict';
 
-// ---- Touch Carousel (Non-looping, bounce at ends) ----
+// ---- Touch Carousel (Infinite Loop) ----
 function initCarousels(){
   document.querySelectorAll('.pdp-carousel').forEach(function(wrap){
     var track = wrap.querySelector('.track');
@@ -13,10 +13,8 @@ function initCarousels(){
     var idx = 0, startX = 0, currentX = 0, dragging = false;
 
     function goTo(i, animate){
-      // Clamp to valid range — no wrapping
-      if(i < 0) i = 0;
-      if(i >= slides.length) i = slides.length - 1;
-      idx = i;
+      // Infinite loop using modulo
+      idx = ((i % slides.length) + slides.length) % slides.length;
       if(!animate) track.style.transition = 'none';
       else track.style.transition = 'transform .35s cubic-bezier(.25,.46,.45,.94)';
       track.style.transform = 'translateX(-' + (idx * 100) + '%)';
@@ -25,20 +23,7 @@ function initCarousels(){
     }
 
     function slide(dir){
-      var newIdx = idx + dir;
-      // Bounce at ends — if at edge, spring back
-      if(newIdx < 0 || newIdx >= slides.length){
-        // Quick bounce animation
-        track.style.transition = 'transform .15s cubic-bezier(.25,.46,.45,.94)';
-        var bounceDir = dir < 0 ? 20 : -20;
-        track.style.transform = 'translateX(' + (-idx * 100 + bounceDir) + '%)';
-        setTimeout(function(){
-          track.style.transition = 'transform .25s cubic-bezier(.25,.46,.45,.94)';
-          track.style.transform = 'translateX(-' + (idx * 100) + '%)';
-        }, 150);
-        return;
-      }
-      goTo(newIdx, true);
+      goTo(idx + dir, true);
     }
 
     // Arrows
@@ -59,12 +44,7 @@ function initCarousels(){
       if(!dragging) return;
       currentX = e.touches[0].clientX;
       var diff = currentX - startX;
-      // Apply resistance at edges
-      var resistance = 1;
-      if((idx === 0 && diff > 0) || (idx === slides.length - 1 && diff < 0)){
-        resistance = 0.3; // Bouncy resistance at edges
-      }
-      var pct = -idx * 100 + (diff / track.offsetWidth * 100 * resistance);
+      var pct = -idx * 100 + (diff / track.offsetWidth * 100);
       track.style.transform = 'translateX(' + pct + '%)';
     }, {passive:true});
 
@@ -73,22 +53,12 @@ function initCarousels(){
       dragging = false;
       track.style.transition = 'transform .35s cubic-bezier(.25,.46,.45,.94)';
       var diff = currentX - startX;
-      if(Math.abs(diff) > track.offsetWidth * 0.2){
-        // Only slide if not at edge in the direction of movement
+      if(Math.abs(diff) > track.offsetWidth * 0.3){
         var direction = diff < 0 ? 1 : -1;
-        var newIdx = idx + direction;
-        if(newIdx >= 0 && newIdx < slides.length){
-          idx = newIdx;
-          track.style.transform = 'translateX(-' + (idx * 100) + '%)';
-        } else {
-          // Bounce back to current
-          track.style.transform = 'translateX(-' + (idx * 100) + '%)';
-        }
+        goTo(idx + direction, true);
       } else {
         track.style.transform = 'translateX(-' + (idx * 100) + '%)';
       }
-      var dots = wrap.querySelectorAll('.pdp-dots span');
-      dots.forEach(function(d,j){ d.classList.toggle('active',j===idx); });
     }, {passive:true});
 
     // Mouse drag (desktop)
@@ -99,28 +69,18 @@ function initCarousels(){
     track.addEventListener('mousemove',function(e){
       if(!dragging) return;
       currentX = e.clientX;
-      var diff = currentX - startX;
-      var resistance = 1;
-      if((idx === 0 && diff > 0) || (idx === slides.length - 1 && diff < 0)){
-        resistance = 0.3;
-      }
-      track.style.transform = 'translateX(' + (-idx * 100 + diff/track.offsetWidth*100*resistance) + '%)';
+      track.style.transform = 'translateX(' + (-idx * 100 + (currentX-startX)/track.offsetWidth*100) + '%)';
     });
     track.addEventListener('mouseup',function(){
       if(!dragging) return;
       dragging = false;
       track.style.transition = 'transform .35s cubic-bezier(.25,.46,.45,.94)';
       var diff = currentX - startX;
-      if(Math.abs(diff) > track.offsetWidth * 0.2){
-        var direction = diff < 0 ? 1 : -1;
-        var newIdx = idx + direction;
-        if(newIdx >= 0 && newIdx < slides.length){
-          idx = newIdx;
-        }
+      if(Math.abs(diff) > track.offsetWidth * 0.3){
+        goTo(idx + (diff < 0 ? 1 : -1), true);
+      } else {
+        track.style.transform = 'translateX(-' + (idx * 100) + '%)';
       }
-      track.style.transform = 'translateX(-' + (idx * 100) + '%)';
-      var dots = wrap.querySelectorAll('.pdp-dots span');
-      dots.forEach(function(d,j){ d.classList.toggle('active',j===idx); });
     });
     track.addEventListener('mouseleave',function(){
       if(!dragging) return;
@@ -131,7 +91,7 @@ function initCarousels(){
   });
 }
 
-// ---- Qty Stepper ----
+// ---- Qty Stepper (kept for compatibility) ----
 function initQty(){
   document.querySelectorAll('.qty-bar').forEach(function(bar){
     var val = bar.querySelector('.val');
@@ -212,9 +172,10 @@ function initConfirm(){
 }
 
 // ---- Cropper: Upload & Color Management ----
-var colorItems = []; // {color_name, swatch_data, qty, id}
+var colorItems = []; // {color_name, swatch_data, size_quantities: {}, id}
 var cropperInstance = null;
 var colorItemIdCounter = 0;
+var SIZES = ['XS','S','M','L','XL','2XL','3XL'];
 
 function initCropperUpload(){
   var openBtn = document.getElementById('openCropperBtn');
@@ -263,15 +224,20 @@ function initCropperUpload(){
       height: 200
     });
     var dataUrl = canvas.toDataURL('image/png');
-    // Use empty name — user can edit later
     addColorItem('', dataUrl);
     closeCropper();
     // Flash success feedback
     var btn = openBtn;
-    var orig = btn.textContent;
     btn.textContent = '✓ 已添加';
-    btn.style.color = '#4caf50';
-    setTimeout(function(){ btn.textContent = orig; btn.style.color = ''; }, 1500);
+    btn.style.backgroundColor = '#4caf50';
+    btn.style.color = '#fff';
+    btn.style.borderColor = '#4caf50';
+    setTimeout(function(){ 
+      btn.textContent = '📷 上传花版'; 
+      btn.style.backgroundColor = '';
+      btn.style.color = '#999';
+      btn.style.borderColor = '#ddd';
+    }, 1500);
   });
 
   // Close modal
@@ -290,28 +256,45 @@ function addColorItem(name, swatchData){
   var list = document.getElementById('colorItemsList');
   if(!list) return;
   var id = ++colorItemIdCounter;
-  colorItems.push({color_name: name, swatch_data: swatchData, qty: 1, id: id});
+  
+  // Initialize size_quantities with all zeros
+  var sizeQtys = {};
+  SIZES.forEach(function(s){ sizeQtys[s] = 0; });
+  
+  colorItems.push({color_name: name, swatch_data: swatchData, size_quantities: sizeQtys, id: id});
 
   var div = document.createElement('div');
   div.className = 'color-item';
   div.dataset.id = id;
+
+  var sizeMatrixHtml = '';
+  SIZES.forEach(function(s){
+    sizeMatrixHtml += '<div class="sm-cell">' +
+      '<span class="sm-label">' + s + '</span>' +
+      '<input type="number" class="size-qty-input" data-size="' + s + '" value="0" min="0">' +
+      '</div>';
+  });
+
   div.innerHTML =
     '<img class="ci-swatch" src="' + swatchData + '" alt="">' +
     '<span class="ci-name" contenteditable="true">' + (name || '未命名') + '</span>' +
-    '<div style="display:flex;align-items:center;gap:4px;">' +
-    '<button type="button" class="ci-qty-btn" data-action="dec">&minus;</button>' +
-    '<span class="ci-qty">1</span>' +
-    '<button type="button" class="ci-qty-btn" data-action="inc">+</button>' +
+    '<button type="button" class="ci-del" data-action="del">&times;</button>' +
+    '<div class="size-matrix">' +
+      sizeMatrixHtml +
     '</div>' +
-    '<div class="qty-presets" style="display:flex;gap:2px;">' +
-    '<button type="button" class="qty-preset-btn" data-qty="1">1</button>' +
-    '<button type="button" class="qty-preset-btn" data-qty="2">2</button>' +
-    '<button type="button" class="qty-preset-btn" data-qty="3">3</button>' +
-    '<button type="button" class="qty-preset-btn" data-qty="5">5</button>' +
-    '<button type="button" class="qty-preset-btn" data-qty="10">10</button>' +
+    '<div class="quick-fill-row">' +
+      '<span class="qf-label">快捷:</span>' +
+      '<button type="button" class="quick-fill-btn" data-qty="5">5</button>' +
+      '<button type="button" class="quick-fill-btn" data-qty="10">10</button>' +
+      '<button type="button" class="quick-fill-btn" data-qty="15">15</button>' +
+      '<button type="button" class="quick-fill-btn" data-qty="20">20</button>' +
     '</div>' +
-    '<button type="button" class="ci-del" data-action="del">&times;</button>';
-  
+    '<div class="custom-size-row">' +
+      '<span style="font-size:10px;color:#aaa;">定制尺码:</span>' +
+      '<input type="text" class="ci-custom-size" placeholder="如: 28码">' +
+    '</div>' +
+    '<div class="ci-total">🔴 合计: <strong class="ci-item-total">0</strong>件</div>';
+
   // Allow inline editing of name
   var nameSpan = div.querySelector('.ci-name');
   nameSpan.addEventListener('blur', function(){
@@ -325,37 +308,76 @@ function addColorItem(name, swatchData){
     }
   });
 
+  // Size input change handler
+  div.querySelectorAll('.size-qty-input').forEach(function(inp){
+    inp.addEventListener('input', function(){
+      var item = colorItems.find(function(i){ return i.id === id; });
+      if(!item) return;
+      var sz = this.dataset.size;
+      var val = parseInt(this.value) || 0;
+      if(val < 0) val = 0;
+      item.size_quantities[sz] = val;
+      updateColorItemTotal(div, item);
+      updateOrderSummary();
+    });
+    // Track focus for quick-fill
+    inp.addEventListener('focus', function(){
+      // Remove focused class from all inputs
+      div.querySelectorAll('.size-qty-input').forEach(function(i){ i.classList.remove('focused-input'); });
+      this.classList.add('focused-input');
+    });
+  });
+
+  // Delete handler
   div.addEventListener('click', function(e){
     var target = e.target;
     var action = target.getAttribute('data-action');
     var itemId = parseInt(div.dataset.id);
     var item = colorItems.find(function(i){ return i.id === itemId; });
     if(!item) return;
-    if(action === 'inc'){
-      item.qty++;
-      div.querySelector('.ci-qty').textContent = item.qty;
-    } else if(action === 'dec'){
-      if(item.qty > 1){
-        item.qty--;
-        div.querySelector('.ci-qty').textContent = item.qty;
-      }
-    } else if(action === 'del'){
+    
+    if(action === 'del'){
       colorItems = colorItems.filter(function(i){ return i.id !== itemId; });
       div.remove();
+      updateOrderSummary();
+      return;
     }
-    // Handle qty preset buttons
-    var qtyPreset = target.closest('.qty-preset-btn');
-    if(qtyPreset){
-      var presetVal = parseInt(qtyPreset.dataset.qty);
-      if(presetVal > 0){
-        item.qty = presetVal;
-        div.querySelector('.ci-qty').textContent = presetVal;
+
+    // Quick fill buttons — fill the focused input
+    var qfBtn = target.closest('.quick-fill-btn');
+    if(qfBtn){
+      var focusedInput = div.querySelector('.size-qty-input.focused-input');
+      if(focusedInput){
+        focusedInput.value = qfBtn.dataset.qty;
+        // Trigger input event
+        var evt = new Event('input', {bubbles: true});
+        focusedInput.dispatchEvent(evt);
+      } else {
+        // If none focused, fill the first non-zero? No, fill M
+        var mInput = div.querySelector('.size-qty-input[data-size="M"]');
+        if(mInput){
+          mInput.value = qfBtn.dataset.qty;
+          mInput.classList.add('focused-input');
+          var evt = new Event('input', {bubbles: true});
+          mInput.dispatchEvent(evt);
+        }
       }
     }
-    updateOrderSummary();
   });
+
   list.appendChild(div);
+  updateColorItemTotal(div, colorItems[colorItems.length - 1]);
   updateOrderSummary();
+}
+
+function updateColorItemTotal(div, item){
+  var totalEl = div.querySelector('.ci-item-total');
+  if(!totalEl || !item) return;
+  var total = 0;
+  SIZES.forEach(function(s){
+    total += item.size_quantities[s] || 0;
+  });
+  totalEl.textContent = total;
 }
 
 function initPresetColors(){
@@ -409,7 +431,11 @@ function updateOrderSummary(){
   var sub = document.getElementById('orderSub');
   if(!sub) return;
   var total = 0;
-  colorItems.forEach(function(item){ total += item.qty; });
+  colorItems.forEach(function(item){
+    SIZES.forEach(function(s){
+      total += item.size_quantities[s] || 0;
+    });
+  });
   sub.textContent = '· ' + total + '件';
 }
 
@@ -439,7 +465,7 @@ function initFormSubmit(){
       return {
         color_name: item.color_name,
         swatch_data: item.swatch_data,
-        qty: item.qty
+        size_quantities: item.size_quantities
       };
     });
     itemsField.value = JSON.stringify(payload);
@@ -497,17 +523,6 @@ function initInlineRename(){
   });
 }
 
-// ---- Qty Multi-Select (new_order: clickable qty options) ----
-function initQtyMultiSelect(){
-  document.querySelectorAll('.qty-multi-options').forEach(function(container){
-    container.addEventListener('click', function(e){
-      var btn = e.target.closest('.qty-option-btn');
-      if(!btn) return;
-      btn.classList.toggle('selected');
-    });
-  });
-}
-
 function escapeHtml(str){
   var div = document.createElement('div');
   div.appendChild(document.createTextNode(str));
@@ -528,7 +543,6 @@ document.addEventListener('DOMContentLoaded',function(){
   initSizeFieldSync();
   initFormSubmit();
   initInlineRename();
-  initQtyMultiSelect();
 });
 
 })();

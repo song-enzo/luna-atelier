@@ -29,18 +29,20 @@
     <!-- Left Column -->
     <div>
 
-      <!-- Items Table -->
-      <h3 style="font-size:13px;font-weight:600;margin-bottom:8px;color:#333;">花色清单</h3>
+      <!-- Items Table with Size Matrix -->
+      <h3 style="font-size:13px;font-weight:600;margin-bottom:8px;color:#333;">花色清单（尺码明细）</h3>
       <table class="admin-table">
         <thead>
           <tr>
             <th>花色</th>
             <th>色样</th>
-            <th>数量</th>
+            <th>尺码明细</th>
+            <th>小计</th>
           </tr>
         </thead>
         <tbody>
           {% for item in order.items %}
+          {% set sq = item.get_size_quantities_dict %}
           <tr>
             <td>{{ item.color_name or '(未命名)' }}</td>
             <td>
@@ -50,10 +52,21 @@
               <span style="color:#ccc;">—</span>
               {% endif %}
             </td>
-            <td>{{ item.quantity }}</td>
+            <td style="font-size:10px;">
+              {% if sq %}
+                {% for s in ['XS','S','M','L','XL','2XL','3XL'] %}
+                  {% if s in sq and sq[s] > 0 %}
+                    <span style="display:inline-block;background:#f5f5f5;padding:1px 5px;margin:1px;border-radius:2px;">{{ s }}:{{ sq[s] }}</span>
+                  {% endif %}
+                {% endfor %}
+              {% else %}
+                <span style="color:#bbb;">—</span>
+              {% endif %}
+            </td>
+            <td style="font-weight:600;">{{ item.get_total_qty }}</td>
           </tr>
           {% else %}
-          <tr><td colspan="3" style="text-align:center;color:#bbb;">暂无花色项</td></tr>
+          <tr><td colspan="4" style="text-align:center;color:#bbb;">暂无花色项</td></tr>
           {% endfor %}
         </tbody>
       </table>

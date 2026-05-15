@@ -1,3 +1,4 @@
+import json
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -98,8 +99,24 @@ class OrderItem(db.Model):
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
     color_name = db.Column(db.String(100))
     swatch_image = db.Column(db.String(300))
-    quantity = db.Column(db.Integer, default=0)
+    size_quantities = db.Column(db.Text, default='{}')
     sort_order = db.Column(db.Integer, default=0)
+    
+    @property
+    def get_total_qty(self):
+        """Return sum of all size quantities"""
+        sizes = self.get_size_quantities_dict()
+        return sum(sizes.values())
+    
+    @property
+    def get_size_quantities_dict(self):
+        """Parse size_quantities JSON string into dict"""
+        if not self.size_quantities:
+            return {}
+        try:
+            return json.loads(self.size_quantities)
+        except (json.JSONDecodeError, TypeError):
+            return {}
 
 class FabricImage(db.Model):
     __tablename__ = 'fabric_images'
@@ -168,6 +185,14 @@ def init_db(app):
             with db.engine.connect() as conn:
                 conn.execute(text('ALTER TABLE fabric_images ADD COLUMN style_id INTEGER DEFAULT NULL'))
                 conn.commit()
+        
+        # OrderItem size_quantities migration
+        oi_cols = [c['name'] for c in inspector.get_columns('order_items')]
+        if 'size_quantities' not in oi_cols:
+            with db.engine.connect() as conn:
+                conn.execute(text("ALTER TABLE order_items ADD COLUMN size_quantities TEXT DEFAULT '{}'"))
+                conn.commit()
+                print("✅ Added size_quantities column to order_items")
         
         admin = User.query.filter_by(username='admin').first()
         if not admin:
