@@ -400,13 +400,30 @@ def mockup():
 
 # ========== 启动 ==========
 
-# Auto-initialize database on gunicorn startup (for Render)
-with app.app_context():
-    init_db(app)
-    from seed import seed
-    seed()
+# Lazy database initialization on first request (works with gunicorn)
+_db_initialized = False
+
+@app.before_request
+def ensure_db_initialized():
+    global _db_initialized
+    if not _db_initialized:
+        try:
+            from models import init_db
+            init_db(app)
+            from seed import seed
+            seed()
+        except Exception as e:
+            import traceback
+            print(f"[DB INIT ERROR] {e}")
+            traceback.print_exc()
+        _db_initialized = True
 
 if __name__ == '__main__':
+    # Initialize before running
+    with app.app_context():
+        init_db(app)
+        from seed import seed
+        seed()
     import sys
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 5000
     app.run(host='0.0.0.0', port=port, debug=True)
