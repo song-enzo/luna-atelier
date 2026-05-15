@@ -2,6 +2,233 @@
 (function(){
 'use strict';
 
+// ---- Image Viewer (Fullscreen overlay for carousel images) ----
+var viewerActive = false;
+var viewerTrackEl = null;
+var viewerSlides = null;
+var viewerIdx = 0;
+var viewerStartX = 0;
+var viewerStartY = 0;
+var viewerOffsetX = 0;
+var viewerOffsetY = 0;
+var viewerDragging = false;
+var viewerScale = 1;
+var viewerLastDist = 0;
+
+function openViewer(clickedSlide, slides, currentIdx){
+  if(viewerActive) return;
+  viewerActive = true;
+  viewerSlides = slides;
+  viewerIdx = currentIdx;
+  viewerScale = 1;
+
+  // Create overlay
+  var overlay = document.createElement('div');
+  overlay.id = 'imageViewerOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:#000;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:none;overflow:hidden;';
+
+  // Close button
+  var closeBtn = document.createElement('button');
+  closeBtn.textContent = '✕';
+  closeBtn.style.cssText = 'position:absolute;top:16px;right:16px;width:36px;height:36px;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:18px;border-radius:50%;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;';
+  overlay.appendChild(closeBtn);
+
+  // Counter
+  var counter = document.createElement('div');
+  counter.id = 'viewerCounter';
+  counter.style.cssText = 'position:absolute;top:20px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.6);font-size:12px;z-index:10;';
+  overlay.appendChild(counter);
+
+  // Image wrapper for pan/zoom
+  var wrapper = document.createElement('div');
+  wrapper.id = 'viewerWrapper';
+  wrapper.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;';
+
+  var img = document.createElement('img');
+  img.id = 'viewerImage';
+  img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;transition:transform .2s;cursor:grab;user-select:none;-webkit-user-select:none;';
+  wrapper.appendChild(img);
+
+  // Arrow buttons
+  var prevBtn = document.createElement('button');
+  prevBtn.textContent = '‹';
+  prevBtn.style.cssText = 'position:absolute;left:10px;top:50%;transform:translateY(-50%);width:36px;height:36px;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:22px;border-radius:50%;cursor:pointer;z-index:5;display:flex;align-items:center;justify-content:center;';
+  var nextBtn = document.createElement('button');
+  nextBtn.textContent = '›';
+  nextBtn.style.cssText = 'position:absolute;right:10px;top:50%;transform:translateY(-50%);width:36px;height:36px;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:22px;border-radius:50%;cursor:pointer;z-index:5;display:flex;align-items:center;justify-content:center;';
+  overlay.appendChild(prevBtn);
+  overlay.appendChild(nextBtn);
+
+  overlay.appendChild(wrapper);
+  document.body.appendChild(overlay);
+
+  function updateViewerImage(){
+    var slideImgs = viewerSlides[viewerIdx].querySelectorAll('img');
+    if(slideImgs.length > 0){
+      img.src = slideImgs[0].src;
+    }
+    counter.textContent = (viewerIdx + 1) + ' / ' + viewerSlides.length;
+    viewerScale = 1;
+    img.style.transform = 'scale(1) translate(0, 0)';
+    viewerOffsetX = 0;
+    viewerOffsetY = 0;
+  }
+
+  function closeViewer(){
+    viewerActive = false;
+    var o = document.getElementById('imageViewerOverlay');
+    if(o) o.remove();
+  }
+
+  function goToPrev(){
+    viewerIdx = (viewerIdx - 1 + viewerSlides.length) % viewerSlides.length;
+    updateViewerImage();
+  }
+
+  function goToNext(){
+    viewerIdx = (viewerIdx + 1) % viewerSlides.length;
+    updateViewerImage();
+  }
+
+  updateViewerImage();
+
+  closeBtn.addEventListener('click', closeViewer);
+  overlay.addEventListener('click', function(e){
+    if(e.target === overlay) closeViewer();
+  });
+  prevBtn.addEventListener('click', function(e){ e.stopPropagation(); goToPrev(); });
+  nextBtn.addEventListener('click', function(e){ e.stopPropagation(); goToNext(); });
+
+  // Touch events for pan, zoom, swipe
+  var touchStartX = 0, touchStartY = 0, touchStartOffsetX = 0, touchStartOffsetY = 0;
+  var touchStartScale = 1;
+
+  overlay.addEventListener('touchstart', function(e){
+    if(e.touches.length === 1){
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchStartOffsetX = viewerOffsetX;
+      touchStartOffsetY = viewerOffsetY;
+      touchStartScale = viewerScale;
+      viewerDragging = false;
+      viewerLastDist = 0;
+    } else if(e.touches.length === 2){
+      var dx = e.touches[0].clientX - e.touches[1].clientX;
+      var dy = e.touches[0].clientY - e.touches[1].clientY;
+      viewerLastDist = Math.sqrt(dx*dx + dy*dy);
+      touchStartScale = viewerScale;
+    }
+  }, {passive:true});
+
+  overlay.addEventListener('touchmove', function(e){
+    e.preventDefault();
+    if(e.touches.length === 1 && viewerLastDist === 0){
+      var dx = e.touches[0].clientX - touchStartX;
+      var dy = e.touches[0].clientY - touchStartY;
+      if(!viewerDragging && (Math.abs(dx) > 5 || Math.abs(dy) > 5)){
+        viewerDragging = true;
+        img.style.cursor = 'grabbing';
+      }
+      if(viewerDragging){
+        viewerOffsetX = touchStartOffsetX + dx;
+        viewerOffsetY = touchStartOffsetY + dy;
+        img.style.transform = 'scale(' + viewerScale + ') translate(' + (viewerOffsetX/viewerScale) + 'px,' + (viewerOffsetY/viewerScale) + 'px)';
+      }
+    } else if(e.touches.length === 2){
+      var dx = e.touches[0].clientX - e.touches[1].clientX;
+      var dy = e.touches[0].clientY - e.touches[1].clientY;
+      var dist = Math.sqrt(dx*dx + dy*dy);
+      if(viewerLastDist > 0){
+        viewerScale = Math.max(0.5, Math.min(5, touchStartScale * (dist / viewerLastDist)));
+        img.style.transform = 'scale(' + viewerScale + ') translate(' + (viewerOffsetX/viewerScale) + 'px,' + (viewerOffsetY/viewerScale) + 'px)';
+      }
+    }
+  }, {passive:false});
+
+  overlay.addEventListener('touchend', function(e){
+    if(e.touches.length === 0){
+      if(!viewerDragging && viewerLastDist === 0){
+        // If no drag, check for horizontal swipe
+        var dx = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX - touchStartX : 0;
+        if(Math.abs(dx) > 60 && viewerScale <= 1){
+          if(dx > 0) goToPrev();
+          else goToNext();
+        }
+      }
+      viewerDragging = false;
+      viewerLastDist = 0;
+      if(img) img.style.cursor = 'grab';
+      // If scale < 1, snap back
+      if(viewerScale < 0.5) viewerScale = 0.5;
+      img.style.transform = 'scale(' + viewerScale + ') translate(' + (viewerOffsetX/viewerScale) + 'px,' + (viewerOffsetY/viewerScale) + 'px)';
+    } else if(e.touches.length === 1){
+      viewerLastDist = 0;
+    }
+  }, {passive:true});
+
+  // Mouse drag
+  var mouseDown = false;
+  var mouseStartX = 0, mouseStartY = 0;
+  var mouseOffsetX = 0, mouseOffsetY = 0;
+
+  img.addEventListener('mousedown', function(e){
+    e.preventDefault();
+    mouseDown = true;
+    mouseStartX = e.clientX;
+    mouseStartY = e.clientY;
+    mouseOffsetX = viewerOffsetX;
+    mouseOffsetY = viewerOffsetY;
+    img.style.cursor = 'grabbing';
+  });
+
+  document.addEventListener('mousemove', function(e){
+    if(!mouseDown) return;
+    var dx = e.clientX - mouseStartX;
+    var dy = e.clientY - mouseStartY;
+    viewerOffsetX = mouseOffsetX + dx;
+    viewerOffsetY = mouseOffsetY + dy;
+    img.style.transform = 'scale(' + viewerScale + ') translate(' + (viewerOffsetX/viewerScale) + 'px,' + (viewerOffsetY/viewerScale) + 'px)';
+  });
+
+  document.addEventListener('mouseup', function(e){
+    if(!mouseDown) return;
+    mouseDown = false;
+    img.style.cursor = 'grab';
+    // Check for swipe (only at scale=1 with minimal vertical move)
+    var dx = e.clientX - mouseStartX;
+    var dy = e.clientY - mouseStartY;
+    if(Math.abs(dx) > 60 && Math.abs(dy) < 40 && viewerScale <= 1.1){
+      if(dx > 0) goToPrev();
+      else goToNext();
+    }
+  });
+
+  // Double-click to zoom
+  img.addEventListener('dblclick', function(e){
+    e.preventDefault();
+    if(viewerScale > 1.5){
+      viewerScale = 1;
+      viewerOffsetX = 0;
+      viewerOffsetY = 0;
+    } else {
+      viewerScale = 2.5;
+      // Zoom towards cursor position
+      var rect = img.getBoundingClientRect();
+      viewerOffsetX = (e.clientX - rect.left - rect.width/2) * (1 - 1/viewerScale);
+      viewerOffsetY = (e.clientY - rect.top - rect.height/2) * (1 - 1/viewerScale);
+    }
+    img.style.transform = 'scale(' + viewerScale + ') translate(' + (viewerOffsetX/viewerScale) + 'px,' + (viewerOffsetY/viewerScale) + 'px)';
+  });
+
+  // Keyboard nav
+  document.addEventListener('keydown', viewerKeyHandler = function(e){
+    if(!viewerActive) return;
+    if(e.key === 'Escape') closeViewer();
+    if(e.key === 'ArrowLeft') goToPrev();
+    if(e.key === 'ArrowRight') goToNext();
+  });
+}
+
 // ---- Touch Carousel (Seamless Infinite Loop via Clone Method) ----
 function initCarousels(){
   document.querySelectorAll('.pdp-carousel').forEach(function(wrap){
@@ -67,8 +294,21 @@ function initCarousels(){
     }
     track.addEventListener('transitionend', onTransitionEnd);
 
-    // Initial position
+    // --- Initial position
     render(false);
+
+    // --- Click image → open fullscreen viewer ---
+    var allSlides = Array.from(track.children);
+    origSlides.forEach(function(slide, i){
+      var slideImg = slide.querySelector('img');
+      if(slideImg){
+        slideImg.style.cursor = 'zoom-in';
+        slideImg.addEventListener('click', function(e){
+          e.stopPropagation();
+          openViewer(slide, origSlides, i);
+        });
+      }
+    });
 
     // --- Arrow navigation ---
     function slide(dir){
@@ -176,16 +416,36 @@ function initSize(){
   });
 }
 
-// ---- Swatch Select ----
+// ---- Swatch Select (preset colors → add to order) ----
 function initSwatches(){
   document.querySelectorAll('.swatch-row').forEach(function(row){
     row.addEventListener('click',function(e){
       var sw = e.target.closest('.swatch-circle');
-      if(!sw || sw.classList.contains('active')) return;
+      if(!sw) return;
+      // Only handle preset swatches (have data-color attribute)
+      var colorName = sw.getAttribute('data-color');
+      if(!colorName) return;
+      // Toggle active visual
       row.querySelectorAll('.swatch-circle').forEach(function(s){ s.classList.remove('active'); });
       sw.classList.add('active');
-      var hidden = row.parentElement.querySelector('input[name="color"]');
-      if(hidden) hidden.value = sw.getAttribute('data-color') || '';
+      // Check if this color is already in colorItems — skip if duplicate
+      var alreadyAdded = colorItems.some(function(item){
+        return item.color_name === colorName;
+      });
+      if(alreadyAdded) return;
+      // Generate a 200x200 solid-color swatch image
+      var bg = sw.style.backgroundColor || '#ddd';
+      var canvas = document.createElement('canvas');
+      canvas.width = 200; canvas.height = 200;
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, 200, 200);
+      var dataUrl = canvas.toDataURL('image/png');
+      addColorItem(colorName, dataUrl);
+      // Update hidden input for backward compatibility
+      var parentRow = row.closest('.opt-block');
+      var hidden = parentRow ? parentRow.querySelector('input[name="color"]') : null;
+      if(hidden) hidden.value = colorName;
     });
   });
 }
@@ -433,22 +693,6 @@ function updateColorItemTotal(div, item){
   totalEl.textContent = total;
 }
 
-function initPresetColors(){
-  document.querySelectorAll('#presetSwatches .swatch-circle').forEach(function(el){
-    el.addEventListener('click', function(){
-      var name = this.getAttribute('data-color') || '自定义';
-      var bg = this.style.backgroundColor || '#ddd';
-      var canvas = document.createElement('canvas');
-      canvas.width = 100; canvas.height = 100;
-      var ctx = canvas.getContext('2d');
-      ctx.fillStyle = bg;
-      ctx.fillRect(0, 0, 100, 100);
-      var dataUrl = canvas.toDataURL('image/png');
-      addColorItem(name, dataUrl);
-    });
-  });
-}
-
 function initCustomSizeToggle(){
   var btn = document.getElementById('customSizeBtn');
   var block = document.getElementById('customSizeBlock');
@@ -591,7 +835,6 @@ document.addEventListener('DOMContentLoaded',function(){
   initOrderForm();
   initConfirm();
   initCropperUpload();
-  initPresetColors();
   initCustomSizeToggle();
   initSizeFieldSync();
   initFormSubmit();

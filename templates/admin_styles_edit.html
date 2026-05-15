@@ -99,7 +99,30 @@
         {% if style and style.image_path %}
         <div style="margin-top:4px;">
           <span style="font-size:11px;color:#888;">当前：</span>
-          <img src="{{ url_for('static', filename=style.image_path) }}" style="width:48px;height:48px;object-fit:cover;border-radius:2px;vertical-align:middle;">
+          <img src="{{ url_for('static', filename=style.image_path) }}" style="width:48px;height:48px;object-fit:cover;border-radius:2px;vertical-align:middle;border:2px solid #111;">
+        </div>
+        {% endif %}
+        <!-- All images for this style: click to set as primary -->
+        {% if style %}
+        <div style="margin-top:8px;">
+          <span style="font-size:10px;color:#999;display:block;margin-bottom:6px;">点击图片设为主图：</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;" id="imageSelector">
+            {% set all_imgs = [] %}
+            {% if style.image_path %}{% set _ = all_imgs.append(style.image_path) %}{% endif %}
+            {% set gallery = style.gallery|default('[]')|from_json %}
+            {% for g in gallery %}{% set _ = all_imgs.append(g) %}{% endfor %}
+            {% for img_path in all_imgs %}
+            <div style="position:relative;display:inline-block;{% if img_path == style.image_path %}outline:2px solid #111;outline-offset:1px;{% endif %}border-radius:2px;">
+              <img src="{{ url_for('static', filename=img_path) }}" style="width:56px;height:56px;object-fit:cover;border-radius:2px;cursor:pointer;{% if img_path == style.image_path %}opacity:1;{% else %}opacity:.7;{% endif %}" 
+                   data-path="{{ img_path }}" 
+                   onclick="setPrimaryImage(this, '{{ img_path }}')"
+                   title="{% if img_path == style.image_path %}当前主图{% else %}点击设为主图{% endif %}">
+              {% if img_path == style.image_path %}
+              <span style="position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:9px;color:#111;font-weight:600;white-space:nowrap;">主图</span>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
         </div>
         {% endif %}
       </div>
@@ -182,5 +205,27 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 });
 {% endif %}
+
+// Set primary image via AJAX
+function setPrimaryImage(el, path){
+  var styleId = {{ style.id if style else 0 }};
+  if(!styleId) return;
+  fetch('/admin/style/' + styleId + '/set-primary', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({image_path: path})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    if(data.success){
+      location.reload();
+    } else {
+      alert('设置失败');
+    }
+  })
+  .catch(function(){
+    alert('请求失败');
+  });
+}
 </script>
 {% endblock %}

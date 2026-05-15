@@ -21,6 +21,8 @@
   <a href="{{ url_for('guest_styles', cat='suit') }}" class="cat-link {% if cat == 'suit' %}active{% endif %}" onclick="closeSidebar()">套装</a>
   <div class="divider"></div>
   <a href="{{ url_for('guest_orders') }}" class="cat-link">📋 我的订单</a>
+  <div class="divider"></div>
+  <a href="{{ url_for('logout') }}" class="cat-link" onclick="closeSidebar()">🚪 退出登录</a>
 </div>
 
 <style>
@@ -40,7 +42,6 @@
   <div class="menu" onclick="toggleSidebar()"><span></span><span></span><span></span></div>
   <div class="brand-sm">LUNA <span>ATELIER</span></div>
   <div class="icons">
-    <a href="{{ url_for('guest_orders') }}">📋</a>
   </div>
 </div>
 

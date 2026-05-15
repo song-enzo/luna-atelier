@@ -544,6 +544,19 @@ def admin_styles_edit(id=0):
     fabrics = Fabric.query.order_by(Fabric.name).all()
     return render_template('admin_styles_edit.html', style=style, fabrics=fabrics)
 
+@app.route('/admin/style/<int:id>/set-primary', methods=['POST'])
+@login_required
+def admin_set_primary_image(id):
+    if current_user.role != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    style = Style.query.get_or_404(id)
+    data = request.json
+    if not data or not data.get('image_path'):
+        return jsonify({'error': 'image_path required'}), 400
+    style.image_path = data['image_path']
+    db.session.commit()
+    return jsonify({'success': True, 'image_path': style.image_path})
+
 @app.route('/admin/style/<int:id>/toggle', methods=['POST'])
 @login_required
 def admin_style_toggle(id):
