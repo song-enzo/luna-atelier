@@ -65,18 +65,7 @@
   gap: 10px;
   padding: 12px 16px;
   border-top: 1px solid #eee;
-}
-.cropper-modal-footer input {
-  flex: 1;
-  padding: 8px 10px;
-  border: 1px solid #ddd;
-  font-size: 13px;
-  font-family: inherit;
-  border-radius: 2px;
-}
-.cropper-modal-footer input:focus {
-  border-color: #111;
-  outline: none;
+  justify-content: flex-end;
 }
 .cropper-modal-footer button {
   padding: 8px 18px;
@@ -121,6 +110,11 @@
 .color-item .ci-name {
   flex: 1;
   color: #333;
+  min-width: 60px;
+}
+.color-item .ci-name:focus {
+  outline: 1px solid #111;
+  outline-offset: 2px;
 }
 .color-item .ci-qty {
   font-weight: 500;
@@ -155,6 +149,59 @@
   color: #333;
   font-family: inherit;
   line-height: 1;
+}
+
+/* Qty Preset Buttons */
+.qty-presets {
+  display: flex;
+  gap: 2px;
+}
+.qty-preset-btn {
+  background: #f5f5f5;
+  border: 1px solid #eee;
+  border-radius: 2px;
+  padding: 2px 6px;
+  font-size: 10px;
+  cursor: pointer;
+  color: #666;
+  font-family: inherit;
+  line-height: 1.4;
+  transition: all .15s;
+}
+.qty-preset-btn:hover {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+/* Fabric History Grid */
+.fabric-history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.fabric-history-item {
+  cursor: pointer;
+  text-align: center;
+  border: 1.5px solid transparent;
+  border-radius: 4px;
+  padding: 4px;
+  transition: border-color .2s;
+}
+.fabric-history-item:hover {
+  border-color: #ddd;
+}
+.fabric-history-item img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 2px;
+}
+.fabric-history-item .count {
+  font-size: 9px;
+  color: #aaa;
+  margin-top: 2px;
 }
 </style>
 
@@ -218,8 +265,25 @@
 
       <!-- Color Items List (multi-color items) -->
       <div class="color-items-list" id="colorItemsList"></div>
-      <div style="font-size:11px;color:#aaa;margin-top:4px;">点击预设色块或上传花版图片框选颜色区域添加到订单</div>
+      <div style="font-size:11px;color:#aaa;margin-top:4px;">
+        点击预设色块或上传花版图片框选颜色区域添加到订单 &mdash; 添加后可直接点击名称编辑颜色名
+      </div>
     </div>
+
+    <!-- Fabric History (previously uploaded fabric images) -->
+    {% if fabric_images %}
+    <div class="opt-block" style="border-bottom:6px solid #f8f8f8;">
+      <div class="label">花版历史（点击复用）</div>
+      <div class="fabric-history-grid" id="fabricHistory">
+        {% for fi in fabric_images %}
+        <div class="fabric-history-item" onclick="useFabricHistory('{{ fi.image_path }}')">
+          <img src="{{ url_for('uploaded_file', filename=fi.image_path) }}" alt="fabric" loading="lazy">
+          <div class="count">已售 <strong>{{ fi.order_count if fi.order_count is defined else 0 }}</strong></div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
 
     <!-- Size Selection -->
     <div class="opt-block">
@@ -264,20 +328,39 @@
   </form>
 </div>
 
-<!-- Cropper Modal -->
+<!-- Cropper Modal — NO color name input -->
 <div class="cropper-modal-overlay" id="cropperModal">
   <div class="cropper-modal-box">
     <div class="cropper-modal-header">
-      <span>框选颜色区域</span>
+      <span>框选花色区域</span>
       <button type="button" id="closeCropperBtn">&times;</button>
     </div>
     <div class="cropper-img-wrap" id="cropperImgWrap">
       <img id="cropperImage" src="" alt="Upload preview">
     </div>
     <div class="cropper-modal-footer">
-      <input type="text" id="cropperColorName" placeholder="颜色名称（如：碎花蓝、条纹红）" maxlength="50">
       <button type="button" id="cropperConfirmBtn" disabled>确认添加</button>
     </div>
   </div>
 </div>
+
+<script>
+// Fabric history: click to reuse
+function useFabricHistory(path){
+  var img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = function(){
+    var canvas = document.createElement('canvas');
+    canvas.width = 200; canvas.height = 200;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, 200, 200);
+    var dataUrl = canvas.toDataURL('image/png');
+    // Try to extract a color name from the image path
+    var name = '花色-' + path.split('/').pop().split('.')[0].substring(0, 8);
+    // Use the addColorItem function from app.js
+    addColorItem(name, dataUrl);
+  };
+  img.src = '/uploads/' + path;
+}
+</script>
 {% endblock %}

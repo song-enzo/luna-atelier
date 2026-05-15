@@ -2,7 +2,7 @@
 (function(){
 'use strict';
 
-// ---- Touch Carousel ----
+// ---- Touch Carousel (Non-looping, bounce at ends) ----
 function initCarousels(){
   document.querySelectorAll('.pdp-carousel').forEach(function(wrap){
     var track = wrap.querySelector('.track');
@@ -12,14 +12,34 @@ function initCarousels(){
 
     var idx = 0, startX = 0, currentX = 0, dragging = false;
 
-    function goTo(i){
-      idx = ((i % slides.length) + slides.length) % slides.length;
+    function goTo(i, animate){
+      // Clamp to valid range — no wrapping
+      if(i < 0) i = 0;
+      if(i >= slides.length) i = slides.length - 1;
+      idx = i;
+      if(!animate) track.style.transition = 'none';
+      else track.style.transition = 'transform .35s cubic-bezier(.25,.46,.45,.94)';
       track.style.transform = 'translateX(-' + (idx * 100) + '%)';
       var dots = wrap.querySelectorAll('.pdp-dots span');
       dots.forEach(function(d,j){ d.classList.toggle('active',j===idx); });
     }
 
-    function slide(dir){ goTo(idx + dir); }
+    function slide(dir){
+      var newIdx = idx + dir;
+      // Bounce at ends — if at edge, spring back
+      if(newIdx < 0 || newIdx >= slides.length){
+        // Quick bounce animation
+        track.style.transition = 'transform .15s cubic-bezier(.25,.46,.45,.94)';
+        var bounceDir = dir < 0 ? 20 : -20;
+        track.style.transform = 'translateX(' + (-idx * 100 + bounceDir) + '%)';
+        setTimeout(function(){
+          track.style.transition = 'transform .25s cubic-bezier(.25,.46,.45,.94)';
+          track.style.transform = 'translateX(-' + (idx * 100) + '%)';
+        }, 150);
+        return;
+      }
+      goTo(newIdx, true);
+    }
 
     // Arrows
     var prev = wrap.querySelector('.pdp-arrow-prev');
@@ -39,7 +59,12 @@ function initCarousels(){
       if(!dragging) return;
       currentX = e.touches[0].clientX;
       var diff = currentX - startX;
-      var pct = -idx * 100 + (diff / track.offsetWidth * 100);
+      // Apply resistance at edges
+      var resistance = 1;
+      if((idx === 0 && diff > 0) || (idx === slides.length - 1 && diff < 0)){
+        resistance = 0.3; // Bouncy resistance at edges
+      }
+      var pct = -idx * 100 + (diff / track.offsetWidth * 100 * resistance);
       track.style.transform = 'translateX(' + pct + '%)';
     }, {passive:true});
 
@@ -49,10 +74,21 @@ function initCarousels(){
       track.style.transition = 'transform .35s cubic-bezier(.25,.46,.45,.94)';
       var diff = currentX - startX;
       if(Math.abs(diff) > track.offsetWidth * 0.2){
-        slide(diff < 0 ? 1 : -1);
+        // Only slide if not at edge in the direction of movement
+        var direction = diff < 0 ? 1 : -1;
+        var newIdx = idx + direction;
+        if(newIdx >= 0 && newIdx < slides.length){
+          idx = newIdx;
+          track.style.transform = 'translateX(-' + (idx * 100) + '%)';
+        } else {
+          // Bounce back to current
+          track.style.transform = 'translateX(-' + (idx * 100) + '%)';
+        }
       } else {
-        goTo(idx);
+        track.style.transform = 'translateX(-' + (idx * 100) + '%)';
       }
+      var dots = wrap.querySelectorAll('.pdp-dots span');
+      dots.forEach(function(d,j){ d.classList.toggle('active',j===idx); });
     }, {passive:true});
 
     // Mouse drag (desktop)
@@ -64,21 +100,33 @@ function initCarousels(){
       if(!dragging) return;
       currentX = e.clientX;
       var diff = currentX - startX;
-      track.style.transform = 'translateX(' + (-idx * 100 + diff/track.offsetWidth*100) + '%)';
+      var resistance = 1;
+      if((idx === 0 && diff > 0) || (idx === slides.length - 1 && diff < 0)){
+        resistance = 0.3;
+      }
+      track.style.transform = 'translateX(' + (-idx * 100 + diff/track.offsetWidth*100*resistance) + '%)';
     });
     track.addEventListener('mouseup',function(){
       if(!dragging) return;
       dragging = false;
       track.style.transition = 'transform .35s cubic-bezier(.25,.46,.45,.94)';
       var diff = currentX - startX;
-      if(Math.abs(diff) > track.offsetWidth * 0.2){ slide(diff < 0 ? 1 : -1); }
-      else { goTo(idx); }
+      if(Math.abs(diff) > track.offsetWidth * 0.2){
+        var direction = diff < 0 ? 1 : -1;
+        var newIdx = idx + direction;
+        if(newIdx >= 0 && newIdx < slides.length){
+          idx = newIdx;
+        }
+      }
+      track.style.transform = 'translateX(-' + (idx * 100) + '%)';
+      var dots = wrap.querySelectorAll('.pdp-dots span');
+      dots.forEach(function(d,j){ d.classList.toggle('active',j===idx); });
     });
     track.addEventListener('mouseleave',function(){
       if(!dragging) return;
       dragging = false;
       track.style.transition = 'transform .35s cubic-bezier(.25,.46,.45,.94)';
-      goTo(idx);
+      track.style.transform = 'translateX(-' + (idx * 100) + '%)';
     });
   });
 }
@@ -173,7 +221,6 @@ function initCropperUpload(){
   var fileInput = document.getElementById('cropperFileInput');
   var modal = document.getElementById('cropperModal');
   var img = document.getElementById('cropperImage');
-  var colorName = document.getElementById('cropperColorName');
   var confirmBtn = document.getElementById('cropperConfirmBtn');
   var closeBtn = document.getElementById('closeCropperBtn');
   if(!openBtn || !fileInput) return;
@@ -202,30 +249,22 @@ function initCropperUpload(){
           background: false
         });
         confirmBtn.disabled = false;
-        colorName.value = '';
-        colorName.focus();
       };
     };
     reader.readAsDataURL(file);
     this.value = '';
   });
 
-  // Confirm crop
+  // Confirm crop — NO color name required, just crop and add
   confirmBtn.addEventListener('click', function(){
     if(!cropperInstance) return;
-    var name = colorName.value.trim();
-    if(!name){
-      colorName.focus();
-      colorName.style.borderColor = '#c41e3a';
-      setTimeout(function(){ colorName.style.borderColor = ''; }, 1500);
-      return;
-    }
     var canvas = cropperInstance.getCroppedCanvas({
       width: 200,
       height: 200
     });
     var dataUrl = canvas.toDataURL('image/png');
-    addColorItem(name, dataUrl);
+    // Use empty name — user can edit later
+    addColorItem('', dataUrl);
     closeCropper();
     // Flash success feedback
     var btn = openBtn;
@@ -258,11 +297,34 @@ function addColorItem(name, swatchData){
   div.dataset.id = id;
   div.innerHTML =
     '<img class="ci-swatch" src="' + swatchData + '" alt="">' +
-    '<span class="ci-name">' + escapeHtml(name) + '</span>' +
-    '<button type="button" class="ci-qty-btn" data-action="dec">−</button>' +
+    '<span class="ci-name" contenteditable="true">' + (name || '未命名') + '</span>' +
+    '<div style="display:flex;align-items:center;gap:4px;">' +
+    '<button type="button" class="ci-qty-btn" data-action="dec">&minus;</button>' +
     '<span class="ci-qty">1</span>' +
     '<button type="button" class="ci-qty-btn" data-action="inc">+</button>' +
-    '<button type="button" class="ci-del" data-action="del">✕</button>';
+    '</div>' +
+    '<div class="qty-presets" style="display:flex;gap:2px;">' +
+    '<button type="button" class="qty-preset-btn" data-qty="1">1</button>' +
+    '<button type="button" class="qty-preset-btn" data-qty="2">2</button>' +
+    '<button type="button" class="qty-preset-btn" data-qty="3">3</button>' +
+    '<button type="button" class="qty-preset-btn" data-qty="5">5</button>' +
+    '<button type="button" class="qty-preset-btn" data-qty="10">10</button>' +
+    '</div>' +
+    '<button type="button" class="ci-del" data-action="del">&times;</button>';
+  
+  // Allow inline editing of name
+  var nameSpan = div.querySelector('.ci-name');
+  nameSpan.addEventListener('blur', function(){
+    var item = colorItems.find(function(i){ return i.id === id; });
+    if(item) item.color_name = this.textContent.trim();
+  });
+  nameSpan.addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      this.blur();
+    }
+  });
+
   div.addEventListener('click', function(e){
     var target = e.target;
     var action = target.getAttribute('data-action');
@@ -281,6 +343,15 @@ function addColorItem(name, swatchData){
       colorItems = colorItems.filter(function(i){ return i.id !== itemId; });
       div.remove();
     }
+    // Handle qty preset buttons
+    var qtyPreset = target.closest('.qty-preset-btn');
+    if(qtyPreset){
+      var presetVal = parseInt(qtyPreset.dataset.qty);
+      if(presetVal > 0){
+        item.qty = presetVal;
+        div.querySelector('.ci-qty').textContent = presetVal;
+      }
+    }
     updateOrderSummary();
   });
   list.appendChild(div);
@@ -291,7 +362,6 @@ function initPresetColors(){
   document.querySelectorAll('#presetSwatches .swatch-circle').forEach(function(el){
     el.addEventListener('click', function(){
       var name = this.getAttribute('data-color') || '自定义';
-      // Generate a small swatch image from the CSS background color
       var bg = this.style.backgroundColor || '#ddd';
       var canvas = document.createElement('canvas');
       canvas.width = 100; canvas.height = 100;
@@ -316,18 +386,15 @@ function initCustomSizeToggle(){
     block.style.display = isActive ? 'none' : 'block';
     btn.classList.toggle('active', !isActive);
     if(!isActive){
-      // Custom mode: clear the hidden size and let textarea value be used
       sizeField.value = '';
       input.focus();
     } else {
-      // Back to standard size
       var activeSize = document.querySelector('.size-grid .size-btn.active:not(.custom)');
       sizeField.value = activeSize ? activeSize.getAttribute('data-size') : 'M';
     }
   });
 }
 
-// Also update the hidden size field when standard size buttons are clicked
 function initSizeFieldSync(){
   document.querySelectorAll('.size-grid .size-btn').forEach(function(btn){
     if(btn.id === 'customSizeBtn') return;
@@ -353,7 +420,6 @@ function initFormSubmit(){
     var itemsField = document.getElementById('itemsField');
     if(!itemsField) return;
 
-    // Handle custom size
     var customBlock = document.getElementById('customSizeBlock');
     var sizeField = document.getElementById('sizeField');
     if(customBlock && customBlock.style.display !== 'none'){
@@ -369,7 +435,6 @@ function initFormSubmit(){
       return;
     }
 
-    // Serialize items (strip internal id, keep only what backend expects)
     var payload = colorItems.map(function(item){
       return {
         color_name: item.color_name,
@@ -379,12 +444,67 @@ function initFormSubmit(){
     });
     itemsField.value = JSON.stringify(payload);
 
-    // Disable submit button to prevent double submit
     var submitBtn = form.querySelector('.order-btn');
     if(submitBtn){
       submitBtn.disabled = true;
       submitBtn.textContent = '提交中…';
     }
+  });
+}
+
+// ---- Inline Style Name Edit (admin) ----
+function initInlineRename(){
+  document.querySelectorAll('.style-name-edit').forEach(function(el){
+    el.addEventListener('dblclick', function(){
+      var currentName = this.textContent.trim();
+      var id = this.dataset.id;
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.value = currentName;
+      input.className = 'inline-rename-input';
+      input.style.cssText = 'width:100%;padding:4px 6px;border:1px solid #111;font-size:12px;font-family:inherit;border-radius:2px;';
+      this.textContent = '';
+      this.appendChild(input);
+      input.focus();
+      input.select();
+
+      function save(){
+        var newName = input.value.trim();
+        if(newName && newName !== currentName){
+          fetch('/admin/style/' + id + '/rename', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name: newName})
+          })
+          .then(function(r){ return r.json(); })
+          .then(function(data){
+            el.textContent = data.name;
+          })
+          .catch(function(){
+            el.textContent = currentName;
+          });
+        } else {
+          el.textContent = currentName;
+        }
+      }
+
+      input.addEventListener('blur', save);
+      input.addEventListener('keydown', function(e){
+        if(e.key === 'Enter'){ e.preventDefault(); this.blur(); }
+        if(e.key === 'Escape'){ el.textContent = currentName; }
+      });
+    });
+  });
+}
+
+// ---- Qty Multi-Select (new_order: clickable qty options) ----
+function initQtyMultiSelect(){
+  document.querySelectorAll('.qty-multi-options').forEach(function(container){
+    container.addEventListener('click', function(e){
+      var btn = e.target.closest('.qty-option-btn');
+      if(!btn) return;
+      btn.classList.toggle('selected');
+    });
   });
 }
 
@@ -407,6 +527,8 @@ document.addEventListener('DOMContentLoaded',function(){
   initCustomSizeToggle();
   initSizeFieldSync();
   initFormSubmit();
+  initInlineRename();
+  initQtyMultiSelect();
 });
 
 })();

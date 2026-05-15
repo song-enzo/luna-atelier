@@ -12,6 +12,7 @@
   <div style="background:#f8f8f8;padding:16px;border-radius:4px;">
     <h3 style="font-size:13px;font-weight:600;margin-bottom:12px;color:#333;">添加客人账号</h3>
     <form method="POST">
+      <input type="hidden" name="action" value="add">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div class="form-group">
           <label>用户名 *</label>
@@ -40,6 +41,48 @@
   </div>
 </div>
 
+<!-- Edit User Modal -->
+<div id="editUserModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:9999;justify-content:center;align-items:center;">
+  <div style="background:#fff;border-radius:4px;padding:20px;width:90%;max-width:400px;">
+    <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">编辑客人</h3>
+    <form method="POST">
+      <input type="hidden" name="action" value="edit">
+      <input type="hidden" name="user_id" id="editUserId">
+      <div class="form-group">
+        <label>显示名称</label>
+        <input type="text" name="nickname" id="editNickname">
+      </div>
+      <div class="form-group">
+        <label>手机</label>
+        <input type="text" name="phone" id="editPhone">
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button type="submit" class="btn-admin dark">保存</button>
+        <button type="button" class="btn-admin light" onclick="document.getElementById('editUserModal').style.display='none'">取消</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div id="resetPwModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:9999;justify-content:center;align-items:center;">
+  <div style="background:#fff;border-radius:4px;padding:20px;width:90%;max-width:400px;">
+    <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">重置密码</h3>
+    <form method="POST">
+      <input type="hidden" name="action" value="reset_password">
+      <input type="hidden" name="user_id" id="resetUserId">
+      <div class="form-group">
+        <label>新密码</label>
+        <input type="text" name="new_password" value="123456" required>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button type="submit" class="btn-admin dark">重置</button>
+        <button type="button" class="btn-admin light" onclick="document.getElementById('resetPwModal').style.display='none'">取消</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Users Table -->
 <div class="admin-table-wrap">
   <div style="overflow-x:auto;">
@@ -50,8 +93,10 @@
           <th>显示名称</th>
           <th>手机</th>
           <th>订单数</th>
-          <th>创建时间</th>
+          <th>最后登录IP</th>
+          <th>最后登录</th>
           <th>状态</th>
+          <th>操作</th>
         </tr>
       </thead>
       <tbody>
@@ -61,12 +106,24 @@
           <td>{{ user.nickname or '-' }}</td>
           <td>{{ user.phone or '-' }}</td>
           <td>{{ user.orders|length }}</td>
-          <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+          <td style="font-size:11px;color:#888;">{{ user.last_login_ip or '-' }}</td>
+          <td style="font-size:11px;">{% if user.last_login_at %}{{ user.last_login_at.strftime('%m/%d %H:%M') }}{% else %}-{% endif %}</td>
           <td><span class="status-badge s-{{ 'completed' if user.is_active else 'pending' }}">{{ '启用' if user.is_active else '停用' }}</span></td>
+          <td>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+              <button class="btn-admin light small" onclick="openEdit({{ user.id }}, '{{ user.nickname|e }}', '{{ user.phone|e }}')">编辑</button>
+              <button class="btn-admin light small" onclick="openReset({{ user.id }})">重置密码</button>
+              <form method="POST" style="display:inline;">
+                <input type="hidden" name="action" value="toggle_active">
+                <input type="hidden" name="user_id" value="{{ user.id }}">
+                <button type="submit" class="btn-admin {{ 'danger' if user.is_active else 'dark' }} small">{{ '停用' if user.is_active else '启用' }}</button>
+              </form>
+            </div>
+          </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="6" class="empty-state">暂无客人</td>
+          <td colspan="8" class="empty-state">暂无客人</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -79,4 +136,16 @@
   {% endif %}
 </div>
 
+<script>
+function openEdit(id, nickname, phone){
+  document.getElementById('editUserId').value = id;
+  document.getElementById('editNickname').value = nickname;
+  document.getElementById('editPhone').value = phone;
+  document.getElementById('editUserModal').style.display = 'flex';
+}
+function openReset(id){
+  document.getElementById('resetUserId').value = id;
+  document.getElementById('resetPwModal').style.display = 'flex';
+}
+</script>
 {% endblock %}

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}面料管理 — LUNA ATELIER{% endblock %}
+{% block content %}
+
+<div class="page-title" style="display:flex;justify-content:space-between;align-items:center;padding-bottom:12px;">
+  <span>面料管理</span>
+  <button class="btn-admin dark small" onclick="document.getElementById('addForm').style.display='block'">+ 添加面料</button>
+</div>
+
+<!-- Add Fabric Form -->
+<div id="addForm" style="display:none;padding:0 16px 16px;">
+  <div style="background:#f8f8f8;padding:16px;border-radius:4px;">
+    <h3 style="font-size:13px;font-weight:600;margin-bottom:12px;color:#333;">添加面料</h3>
+    <form method="POST">
+      <input type="hidden" name="action" value="add">
+      <div class="form-group">
+        <label>面料名称 *</label>
+        <input type="text" name="name" required placeholder="如：纯棉府绸">
+      </div>
+      <div class="form-group">
+        <label>成份比例</label>
+        <input type="text" name="composition" placeholder="如：棉100%">
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button type="submit" class="btn-admin dark">保存</button>
+        <button type="button" class="btn-admin light" onclick="document.getElementById('addForm').style.display='none'">取消</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Fabrics Table -->
+<div class="admin-table-wrap">
+  <div style="overflow-x:auto;">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>面料名称</th>
+          <th>成份比例</th>
+          <th>创建时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fabric in fabrics %}
+        <tr>
+          <td><strong>{{ fabric.name }}</strong></td>
+          <td>{{ fabric.composition or '-' }}</td>
+          <td>{{ fabric.created_at.strftime('%Y-%m-%d') if fabric.created_at else '-' }}</td>
+          <td>
+            <form method="POST" style="display:inline;" onsubmit="return confirm('确认删除面料「{{ fabric.name }}」？')">
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="fabric_id" value="{{ fabric.id }}">
+              <button type="submit" class="btn-admin danger small">删除</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="empty-state">暂无面料，请添加</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if fabrics %}
+  <div style="padding:10px 0 0;font-size:11px;color:#aaa;">
+    共 {{ fabrics|length }} 种面料
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

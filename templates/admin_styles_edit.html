@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}{% if style %}编辑款式{% else %}添加款式{% endif %} — LUNA ATELIER{% endblock %}
+{% block content %}
+
+<style>
+.color-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: #f5f5f5;
+  border-radius: 12px;
+  font-size: 12px;
+  margin: 3px;
+}
+.color-tag .del-color {
+  cursor: pointer;
+  color: #ccc;
+  font-size: 14px;
+  line-height: 1;
+}
+.color-tag .del-color:hover { color: #c41e3a; }
+</style>
+
+<div class="page-title" style="padding-bottom:12px;">
+  <a href="{{ url_for('admin_styles') }}" style="font-size:12px;color:#888;text-decoration:none;">&larr; 返回款式列表</a>
+</div>
+
+<div style="padding:0 16px 16px;">
+  <div style="background:#f8f8f8;padding:16px;border-radius:4px;">
+    <h3 style="font-size:13px;font-weight:600;margin-bottom:12px;color:#333;">
+      {% if style %}编辑款式 #{{ style.id }}{% else %}添加新款{% endif %}
+    </h3>
+    <form method="POST" enctype="multipart/form-data" action="{% if style %}{{ url_for('admin_style_edit', id=style.id) }}{% else %}{{ url_for('admin_styles') }}{% endif %}">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label>款式名称 *</label>
+          <input type="text" name="name" value="{{ style.name if style else '' }}" required placeholder="如：法式碎花连衣裙-白底">
+        </div>
+        <div class="form-group">
+          <label>款式编号</label>
+          <input type="text" name="code" value="{{ style.code if style else '' }}" placeholder="5位数编号">
+        </div>
+      </div>
+      
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label>单价 (€)</label>
+          <input type="number" name="price" step="0.01" value="{{ style.price if style else 0 }}">
+        </div>
+        <div class="form-group">
+          <label>面料选择</label>
+          <select name="fabric_id" style="width:100%;padding:8px 10px;border:1px solid #ddd;font-size:13px;font-family:inherit;border-radius:2px;">
+            <option value="">— 无 —</option>
+            {% for f in fabrics %}
+            <option value="{{ f.id }}" {% if style and style.fabric_id == f.id %}selected{% endif %}>{{ f.name }} — {{ f.composition }}</option>
+            {% endfor %}
+            <option value="__custom__">✏️ 自定义</option>
+          </select>
+          <input type="text" name="fabric_info" id="customFabricInput" placeholder="自定义布料成分" style="display:none;margin-top:6px;width:100%;padding:8px 10px;border:1px solid #ddd;font-size:13px;font-family:inherit;border-radius:2px;" value="{{ style.fabric_info if style and not style.fabric_id else '' }}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>颜色（多选）</label>
+        <div>
+          <select id="colorSelect" style="padding:6px 10px;border:1px solid #ddd;font-size:12px;font-family:inherit;border-radius:2px;">
+            <option value="">— 选择颜色 —</option>
+            {% set preset_colors = ['米白','黑色','灰色','藏青','驼色','卡其','酒红','白色','粉色','军绿','香槟','焦糖','燕麦','蓝色','红色','碎花','花呢','牛仔','绿色','紫色','橙色','棕色','米色','杏色','豆沙','珊瑚','裸色'] %}
+            {% set style_colors = [] %}
+            {% if style %}
+              {% set style_colors = style.colors|default('[]')|from_json %}
+            {% endif %}
+            {% for c in preset_colors %}
+            <option value="{{ c }}">{{ c }}</option>
+            {% endfor %}
+          </select>
+          <button type="button" class="btn-admin light small" onclick="addColor()" style="margin-left:6px;">添加</button>
+        </div>
+        <div id="colorTags" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:2px;">
+          {% for c in style_colors %}
+          <span class="color-tag">
+            {{ c }}
+            <span class="del-color" onclick="this.parentElement.remove();updateColorsField()">&times;</span>
+          </span>
+          {% endfor %}
+        </div>
+        <input type="hidden" name="colors" id="colorsField" value="{{ style.colors|default('[]') }}">
+      </div>
+
+      <div class="form-group">
+        <label>描述</label>
+        <textarea name="description" placeholder="款式描述" rows="2">{{ style.description if style else '' }}</textarea>
+      </div>
+      
+      <div class="form-group">
+        <label>参考图（主图）</label>
+        <input type="file" name="image" accept="image/*" style="padding:4px;font-size:12px;">
+        {% if style and style.image_path %}
+        <div style="margin-top:4px;">
+          <span style="font-size:11px;color:#888;">当前：</span>
+          <img src="{{ url_for('static', filename=style.image_path) }}" style="width:48px;height:48px;object-fit:cover;border-radius:2px;vertical-align:middle;">
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label>多图上传（额外展示图）</label>
+        <input type="file" name="gallery_files" accept="image/*" multiple style="padding:4px;font-size:12px;">
+        {% if style and style.gallery %}
+        {% set gallery = style.gallery|default('[]')|from_json %}
+        {% if gallery %}
+        <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;">
+          {% for g in gallery %}
+          <img src="{{ url_for('static', filename=g) }}" style="width:48px;height:48px;object-fit:cover;border-radius:2px;border:1px solid #eee;">
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% endif %}
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button type="submit" class="btn-admin dark">{% if style %}保存修改{% else %}保存{% endif %}</button>
+        <a href="{{ url_for('admin_styles') }}" class="btn-admin light">取消</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// Fabric select: show custom input when __custom__ selected
+var fabricSelects = document.querySelectorAll('select[name="fabric_id"]');
+fabricSelects.forEach(function(sel){
+  sel.addEventListener('change', function(){
+    var customInput = document.getElementById('customFabricInput');
+    if(this.value === '__custom__'){
+      customInput.style.display = 'block';
+      customInput.removeAttribute('name');
+      customInput.setAttribute('name', 'fabric_info');
+    } else {
+      customInput.style.display = 'none';
+      customInput.removeAttribute('name');
+    }
+  });
+});
+
+// Color management
+function addColor(){
+  var sel = document.getElementById('colorSelect');
+  var val = sel.value;
+  if(!val) return;
+  // Check if already added
+  var existing = document.querySelectorAll('#colorTags .color-tag');
+  for(var i = 0; i < existing.length; i++){
+    if(existing[i].textContent.trim().replace('×','') === val) return;
+  }
+  var tag = document.createElement('span');
+  tag.className = 'color-tag';
+  tag.innerHTML = val + ' <span class="del-color" onclick="this.parentElement.remove();updateColorsField()">&times;</span>';
+  document.getElementById('colorTags').appendChild(tag);
+  sel.value = '';
+  updateColorsField();
+}
+
+function updateColorsField(){
+  var tags = document.querySelectorAll('#colorTags .color-tag');
+  var colors = [];
+  tags.forEach(function(t){
+    colors.push(t.textContent.trim().replace('×',''));
+  });
+  document.getElementById('colorsField').value = JSON.stringify(colors);
+}
+
+// Initialize: if editing, show custom fabric input if fabric_info exists but no fabric_id
+{% if style and not style.fabric_id and style.fabric_info %}
+document.addEventListener('DOMContentLoaded', function(){
+  var sel = document.querySelector('select[name="fabric_id"]');
+  var customInput = document.getElementById('customFabricInput');
+  if(sel && customInput && !sel.value){
+    sel.value = '__custom__';
+    customInput.style.display = 'block';
+  }
+});
+{% endif %}
+</script>
+{% endblock %}

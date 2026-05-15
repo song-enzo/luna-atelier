@@ -14,6 +14,8 @@ class User(UserMixin, db.Model):
     phone = db.Column(db.String(20))
     role = db.Column(db.String(20), default='guest')  # admin / guest
     is_active = db.Column(db.Boolean, default=True)
+    last_login_ip = db.Column(db.String(45), default='')
+    last_login_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
     
     orders = db.relationship('Order', backref='customer', lazy=True)
@@ -33,11 +35,21 @@ class Style(db.Model):
     fabric_info = db.Column(db.String(500))
     image_path = db.Column(db.String(300))
     gallery = db.Column(db.Text, default='[]')  # JSON array of extra image paths
+    colors = db.Column(db.Text, default='[]')  # JSON array of color strings
+    fabric_id = db.Column(db.Integer, db.ForeignKey('fabrics.id'), nullable=True)
     price = db.Column(db.Float, default=0)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
     
     orders = db.relationship('Order', backref='style', lazy=True)
+    fabric = db.relationship('Fabric', backref='styles', lazy=True)
+
+class Fabric(db.Model):
+    __tablename__ = 'fabrics'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    composition = db.Column(db.String(500), default='')
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
 # 状态流转: pending → confirmed → cutting → sewing → qc → shipped → completed
 STATUS_MAP = {
@@ -93,6 +105,7 @@ class FabricImage(db.Model):
     __tablename__ = 'fabric_images'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    style_id = db.Column(db.Integer, db.ForeignKey('styles.id'), nullable=True)
     image_path = db.Column(db.String(300), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
@@ -106,17 +119,52 @@ class OrderLog(db.Model):
     operator = db.Column(db.String(50))
     created_at = db.Column(db.DateTime, default=datetime.now)
 
+class LoginLog(db.Model):
+    __tablename__ = 'login_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    ip = db.Column(db.String(45), default='')
+    user_agent = db.Column(db.String(500), default='')
+    login_at = db.Column(db.DateTime, default=datetime.now)
+    success = db.Column(db.Boolean, default=True)
+
 def init_db(app):
     with app.app_context():
         db.create_all()
-        # Add gallery column for existing tables (migration)
+        # Migrations for existing tables
         from sqlalchemy import inspect, text
         inspector = inspect(db.engine)
+        
+        # Gallery column migration
         columns = [c['name'] for c in inspector.get_columns('styles')]
         if 'gallery' not in columns:
             with db.engine.connect() as conn:
                 conn.execute(text('ALTER TABLE styles ADD COLUMN gallery TEXT DEFAULT \'[]\''))
                 conn.commit()
+        if 'colors' not in columns:
+            with db.engine.connect() as conn:
+                conn.execute(text('ALTER TABLE styles ADD COLUMN colors TEXT DEFAULT \'[]\''))
+                conn.commit()
+        if 'fabric_id' not in columns:
+            with db.engine.connect() as conn:
+                conn.execute(text('ALTER TABLE styles ADD COLUMN fabric_id INTEGER DEFAULT NULL'))
+                conn.commit()
+        
+        # User columns migration
+        user_cols = [c['name'] for c in inspector.get_columns('users')]
+        if 'last_login_ip' not in user_cols:
+            with db.engine.connect() as conn:
+                conn.execute(text('ALTER TABLE users ADD COLUMN last_login_ip VARCHAR(45) DEFAULT \'\''))
+                conn.execute(text('ALTER TABLE users ADD COLUMN last_login_at DATETIME DEFAULT NULL'))
+                conn.commit()
+        
+        # FabricImage columns migration
+        fi_cols = [c['name'] for c in inspector.get_columns('fabric_images')]
+        if 'style_id' not in fi_cols:
+            with db.engine.connect() as conn:
+                conn.execute(text('ALTER TABLE fabric_images ADD COLUMN style_id INTEGER DEFAULT NULL'))
+                conn.commit()
+        
         admin = User.query.filter_by(username='admin').first()
         if not admin:
             admin = User(

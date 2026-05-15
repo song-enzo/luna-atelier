@@ -2,7 +2,6 @@
 {% block title %}款式浏览 · LUNA ATELIER{% endblock %}
 {% block content %}
 {% set hide_nav = true %}
-<div class="status-bar"><span>--:--</span><span>🔋</span></div>
 <div class="top-nav">
   <div class="menu"><span></span><span></span><span></span></div>
   <div class="brand-sm">LUNA <span>ATELIER</span></div>
@@ -12,7 +11,7 @@
 </div>
 <div class="cat-strip">
   <form method="GET" id="catForm">
-    {% for label, key in [('全部',''), ('西装','blazer'), ('连衣裙','dress'), ('大衣','coat'), ('上衣','top'), ('裤装','pants'), ('半裙','skirt')] %}
+    {% for label, key in [('全部',''), ('西装','blazer'), ('连衣裙','dress'), ('大衣','coat'), ('上衣','top'), ('裤装','pants'), ('半裙','skirt'), ('套装','suit')] %}
     <button type="submit" name="cat" value="{{ key }}" class="cat-btn {% if cat == key %}active{% endif %}"
       onclick="this.form.submit()">{{ label }}</button>
     {% endfor %}
@@ -43,6 +42,9 @@
       <div class="name">{{ style.name }}</div>
       {% if style.price %}<div class="price">€ {{ '%.2f'|format(style.price) }}</div>{% endif %}
       <div class="sku">{{ style.code or '' }}</div>
+      <div style="font-size:10px;color:#bbb;margin-top:2px;">
+        {% if style.created_at %}{{ style.created_at.strftime('%Y-%m-%d') }}{% endif %}
+      </div>
     </div>
   </a>
   {% endfor %}
