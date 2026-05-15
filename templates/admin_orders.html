@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}订单管理 — LUNA ATELIER{% endblock %}
+{% block content %}
+
+<div class="page-title">订单管理</div>
+
+<div class="filter-bar">
+  <form method="GET" style="display:flex;gap:8px;flex-wrap:wrap;width:100%;align-items:center;">
+    <input type="text" name="q" placeholder="搜索订单号..." value="{{ q }}">
+    <select name="status">
+      <option value="">全部状态</option>
+      {% for key, label in STATUS_MAP.items() %}
+      <option value="{{ key }}" {% if status_filter == key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="user">
+      <option value="">全部客人</option>
+      {% for u in users %}
+      <option value="{{ u.id }}" {% if user_filter|string == u.id|string %}selected{% endif %}>{{ u.nickname or u.username }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn-admin dark small">筛选</button>
+    <a href="{{ url_for('admin_orders') }}" class="btn-admin light small">重置</a>
+  </form>
+</div>
+
+<div class="admin-table-wrap">
+  <div style="overflow-x:auto;">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>订单号</th>
+          <th>客人</th>
+          <th>款式</th>
+          <th>数量</th>
+          <th>状态</th>
+          <th>金额</th>
+          <th>日期</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+        <tr>
+          <td><strong>{{ order.order_no }}</strong></td>
+          <td>{{ order.customer.nickname or order.customer.username }}</td>
+          <td>{{ order.style.name }}</td>
+          <td>{{ order.total_qty }}</td>
+          <td><span class="status-badge s-{{ order.status }}">{{ STATUS_MAP[order.status] }}</span></td>
+          <td>{% if order.total_amount %}€{{ "%.2f"|format(order.total_amount) }}{% else %}-{% endif %}</td>
+          <td>{{ order.created_at.strftime('%m/%d %H:%M') }}</td>
+          <td>
+            <a href="{{ url_for('admin_order_detail', order_id=order.id) }}" class="btn-admin dark small">查看</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="empty-state">暂无匹配订单</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if orders %}
+  <div style="padding:10px 0 0;font-size:11px;color:#aaa;">
+    共 {{ orders|length }} 条记录
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

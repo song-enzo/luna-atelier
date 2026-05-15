@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}{{ style.name }} · LUNA ATELIER{% endblock %}
+{% block content %}
+{% set hide_alerts = true %}
+
+<style>
+@media(max-width:480px){
+  .pdp-layout{grid-template-columns:1fr !important}
+}
+</style>
+
+<div class="pdp-wrap">
+  <!-- Image Carousel -->
+  <div style="position:relative;">
+    <div class="pdp-top-bar">
+      <a href="{{ url_for('guest_styles') }}" style="text-decoration:none;"><button>←</button></a>
+    </div>
+    <div class="pdp-carousel">
+      <div class="track" id="pdpTrack">
+        <div class="slide">
+          {% if style.image_path %}
+          <img src="{{ url_for('uploaded_file', filename=style.image_path) }}" alt="{{ style.name }}">
+          {% else %}
+          <div style="width:100%;height:100%;background:#f0ece6;display:flex;align-items:center;justify-content:center;color:#ccc;">暂无图片</div>
+          {% endif %}
+        </div>
+        <!-- Same image for now, will have multiple angles later -->
+        <div class="slide">
+          {% if style.image_path %}
+          <img src="{{ url_for('uploaded_file', filename=style.image_path) }}" alt="{{ style.name }}" style="transform:scaleX(-1)">
+          {% else %}
+          <div style="width:100%;height:100%;background:#f0ece6;display:flex;align-items:center;justify-content:center;color:#ccc;">暂无图片</div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="pdp-arrows">
+        <button class="pdp-arrow-prev">‹</button>
+        <button class="pdp-arrow-next">›</button>
+      </div>
+      <div class="pdp-dots">
+        <span class="active"></span><span></span>
+      </div>
+    </div>
+  </div>
+
+  <form method="POST" enctype="multipart/form-data" id="orderForm">
+    <input type="hidden" name="size" id="sizeField" value="M">
+    <input type="hidden" name="items" id="itemsField" value="[]">
+
+    <div class="pdp-info">
+      <div class="brand">LUNA ATELIER</div>
+      <div class="name">{{ style.name }}</div>
+      <div class="meta">{{ style.code or '' }} · {{ style.fabric_info or '' }}</div>
+      {% if style.price %}<div class="price">€ {{ '%.2f'|format(style.price) }}</div>{% endif %}
+    </div>
+
+    <!-- Color Selection -->
+    <div class="opt-block">
+      <div class="label">颜色</div>
+      <div class="swatch-row">
+        {% set colors = {'米白':'#f5f0eb','黑色':'#1a1a1a','灰色':'#888','藏青':'#1b2a4a','驼色':'#c4a882','卡其':'#b8a88a','酒红':'#722f37','白色':'#f8f8f8','粉色':'#e8a0bf','军绿':'#5c6b4f','香槟':'#e8d5b7','焦糖':'#a67c52','燕麦':'#d4c5a9','蓝色':'#5b7cb8','红色':'#c41e3a','碎花':'#c4958a','花呢':'#b8a88a','牛仔':'#3a6a9a'} %}
+        {% set name_parts = style.name.split('-') %}
+        {% set default_color = name_parts[-1] if name_parts|length > 1 else '黑色' %}
+        {% for c in ['米白','黑色','灰色','藏青','驼色','卡其','酒红','白色','粉色'] %}
+        {% set bg = colors.get(c, '#ddd') %}
+        <div class="swatch-circle {% if c == default_color %}active{% endif %}" style="background:{{ bg }};" data-color="{{ c }}" title="{{ c }}"></div>
+        {% endfor %}
+        <button type="button" class="swatch-upload-btn" onclick="document.getElementById('colorUpload').click()">📷 上传花版</button>
+        <input type="file" id="colorUpload" accept="image/*" style="display:none;" onchange="uploadColorSwatch(this)">
+        <input type="hidden" name="color" id="colorField" value="{{ default_color }}">
+      </div>
+    </div>
+
+    <!-- Size Selection -->
+    <div class="opt-block">
+      <div class="label">尺码</div>
+      <div class="size-grid">
+        {% for s in ['XS','S','M','L','XL','2XL','3XL'] %}
+        <button type="button" class="size-btn {% if s == 'M' %}active{% endif %}" data-size="{{ s }}">{{ s }}</button>
+        {% endfor %}
+        <button type="button" class="size-btn custom">✏️ 定制</button>
+      </div>
+    </div>
+
+    <!-- Quantity -->
+    <div class="opt-block">
+      <div class="label">数量</div>
+      <div class="qty-bar">
+        <button type="button" class="qty-dec">−</button>
+        <span class="val">1</span>
+        <button type="button" class="qty-inc">+</button>
+      </div>
+    </div>
+
+    <!-- Remark -->
+    <div class="opt-block">
+      <div class="label">备注说明</div>
+      <textarea class="remark-inp" name="remark" placeholder="例：袖长改短2cm、腰围收2寸、需要加内衬、加厚肩垫…"></textarea>
+    </div>
+
+    <!-- Description -->
+    <div class="pdp-desc">
+      <strong>款式描述</strong><br>
+      {{ style.description or '暂无描述' }}<br>
+      面料：{{ style.fabric_info or '暂无' }}<br><br>
+      <strong>⚠️ 定制提示</strong><br>
+      下单后客服将在24h内联系确认尺码和细节
+    </div>
+
+    <!-- Bottom Action -->
+    <div class="bottom-action">
+      <button type="button" class="fav">♡</button>
+      <button type="submit" class="order-btn">
+        下单
+        <span class="sub" id="orderSub">· 1件</span>
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

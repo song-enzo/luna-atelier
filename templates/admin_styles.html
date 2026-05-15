@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+{% block title %}款式管理 — LUNA ATELIER{% endblock %}
+{% block content %}
+
+<div class="page-title" style="display:flex;justify-content:space-between;align-items:center;padding-bottom:12px;">
+  <span>款式管理</span>
+  <button class="btn-admin dark small" onclick="toggleAdd()">+ 添加款式</button>
+</div>
+
+<!-- Add Style Form -->
+<div id="addForm" style="display:none;padding:0 16px 16px;">
+  <div style="background:#f8f8f8;padding:16px;border-radius:4px;">
+    <h3 style="font-size:13px;font-weight:600;margin-bottom:12px;color:#333;">添加新款</h3>
+    <form method="POST" enctype="multipart/form-data" action="{{ url_for('admin_styles') }}">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label>款式基础名 *</label>
+          <select name="base_name" id="addBaseName" required style="width:100%;padding:8px 10px;border:1px solid #ddd;font-size:13px;font-family:inherit;border-radius:2px;">
+            <option value="">— 选择或输入 —</option>
+            {% set bases = [] %}
+            {% for s in styles %}
+              {% set parts = s.name.split('-') if '-' in s.name else [s.name, ''] %}
+              {% if parts[0] not in bases %}{% set _ = bases.append(parts[0]) %}{% endif %}
+            {% endfor %}
+            {% for b in bases|sort %}
+            <option value="{{ b }}">{{ b }}</option>
+            {% endfor %}
+            <option value="__custom__">✏️ 自定义</option>
+          </select>
+          <input type="text" name="name_custom" id="addNameCustom" placeholder="自定义款式名" style="display:none;margin-top:6px;width:100%;padding:8px 10px;border:1px solid #ddd;font-size:13px;font-family:inherit;border-radius:2px;">
+        </div>
+        <div class="form-group">
+          <label>颜色/规格</label>
+          <input type="text" name="name_suffix" id="addNameSuffix" placeholder="例：黑色、米白" style="width:100%;padding:8px 10px;border:1px solid #ddd;font-size:13px;font-family:inherit;border-radius:2px;">
+        </div>
+      </div>
+      <input type="hidden" name="name" id="addNameField">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label>款式编号</label>
+          <input type="text" name="code" placeholder="5位数编号">
+        </div>
+        <div class="form-group">
+          <label>单价 (€)</label>
+          <input type="number" name="price" step="0.01" value="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>布料成分</label>
+        <input type="text" name="fabric_info" placeholder="例：涤纶65% + 棉35%">
+      </div>
+      <div class="form-group">
+        <label>描述</label>
+        <textarea name="description" placeholder="款式描述" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label>参考图</label>
+        <input type="file" name="image" accept="image/*" style="padding:4px;font-size:12px;">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button type="submit" class="btn-admin dark">保存</button>
+        <button type="button" class="btn-admin light" onclick="toggleAdd()">取消</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Style Form -->
+<div id="editForm" style="display:none;padding:0 16px 16px;">
+  <div style="background:#f8f8f8;padding:16px;border-radius:4px;">
+    <h3 style="font-size:13px;font-weight:600;margin-bottom:12px;color:#333;">编辑款式</h3>
+    <form method="POST" enctype="multipart/form-data" id="editFormAction">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label>款式基础名 *</label>
+          <select name="base_name" id="editBaseName" required style="width:100%;padding:8px 10px;border:1px solid #ddd;font-size:13px;font-family:inherit;border-radius:2px;" onchange="editBaseChange()">
+            <option value="">— 选择或输入 —</option>
+            {% set bases = [] %}
+            {% for s in styles %}
+              {% set parts = s.name.split('-') if '-' in s.name else [s.name, ''] %}
+              {% if parts[0] not in bases %}{% set _ = bases.append(parts[0]) %}{% endif %}
+            {% endfor %}
+            {% for b in bases|sort %}
+            <option value="{{ b }}">{{ b }}</option>
+            {% endfor %}
+            <option value="__custom__">✏️ 自定义</option>
+          </select>
+          <input type="text" name="name_custom" id="editNameCustom" placeholder="自定义款式名" style="display:none;margin-top:6px;width:100%;padding:8px 10px;border:1px solid #ddd;font-size:13px;font-family:inherit;border-radius:2px;">
+        </div>
+        <div class="form-group">
+          <label>颜色/规格</label>
+          <input type="text" name="name_suffix" id="editNameSuffix" placeholder="例：黑色、米白" style="width:100%;padding:8px 10px;border:1px solid #ddd;font-size:13px;font-family:inherit;border-radius:2px;">
+        </div>
+      </div>
+      <input type="hidden" name="name" id="editNameField">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label>款式编号</label>
+          <input type="text" name="code" id="editCode">
+        </div>
+        <div class="form-group">
+          <label>单价 (€)</label>
+          <input type="number" name="price" step="0.01" id="editPrice">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>布料成分</label>
+        <input type="text" name="fabric_info" id="editFabric" placeholder="例：涤纶65% + 棉35%">
+      </div>
+      <div class="form-group">
+        <label>描述</label>
+        <textarea name="description" id="editDescription" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label>参考图</label>
+        <input type="file" name="image" accept="image/*" style="padding:4px;font-size:12px;">
+        <div id="editCurrentImage" style="margin-top:4px;font-size:11px;color:#888;"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button type="submit" class="btn-admin dark">保存修改</button>
+        <button type="button" class="btn-admin light" onclick="toggleEdit()">取消</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Styles Table -->
+<div class="admin-table-wrap">
+  <div style="overflow-x:auto;">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>编号</th>
+          <th>款式名</th>
+          <th>参考图</th>
+          <th>描述</th>
+          <th>布料</th>
+          <th>单价</th>
+          <th>状态</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for style in styles %}
+        <tr>
+          <td><strong>{{ style.code or '-' }}</strong></td>
+          <td>{{ style.name }}</td>
+          <td>
+            {% if style.image_path %}
+            <img src="{{ url_for('uploaded_file', filename=style.image_path) }}" alt="{{ style.name }}" style="width:48px;height:48px;object-fit:cover;border-radius:2px;border:1px solid #eee;">
+            {% else %}
+            <span style="color:#ccc;">无图</span>
+            {% endif %}
+          </td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ style.description or '' }}</td>
+          <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ style.fabric_info or '-' }}</td>
+          <td>{% if style.price %}€{{ "%.2f"|format(style.price) }}{% else %}-{% endif %}</td>
+          <td><span class="status-badge s-{{ 'completed' if style.is_active else 'pending' }}">{{ '上架' if style.is_active else '已下架' }}</span></td>
+          <td>
+            <div style="display:flex;gap:4px;">
+              <button class="btn-admin light small" onclick="editStyle({{ style.id }}, '{{ style.name|e }}', '{{ style.code|e }}', '{{ style.description|e }}', '{{ style.fabric_info|e }}', {{ style.price|default(0) }}, '{{ style.image_path|e }}')">编辑</button>
+              <form method="POST" action="{{ url_for('admin_style_delete', id=style.id) }}" style="display:inline;" onsubmit="return confirm('确认下架此款式？')">
+                <button type="submit" class="btn-admin danger small">下架</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="empty-state">暂无款式</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// ---- Add Form ----
+function toggleAdd(){
+  var f = document.getElementById('addForm');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+
+document.getElementById('addBaseName').addEventListener('change', function(){
+  var c = document.getElementById('addNameCustom');
+  c.style.display = this.value === '__custom__' ? 'block' : 'none';
+  if(this.value !== '__custom__') c.value = '';
+});
+
+document.getElementById('addForm').querySelector('form').addEventListener('submit', function(){
+  var base = document.getElementById('addBaseName').value;
+  var suffix = document.getElementById('addNameSuffix').value;
+  var custom = document.getElementById('addNameCustom').value;
+  var fullName = '';
+  if(base === '__custom__'){
+    fullName = custom;
+  } else if(base){
+    fullName = suffix ? base + '-' + suffix : base;
+  } else {
+    fullName = suffix;
+  }
+  document.getElementById('addNameField').value = fullName;
+});
+
+// ---- Edit Form ----
+function toggleEdit(){
+  var f = document.getElementById('editForm');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+
+function editBaseChange(){
+  var c = document.getElementById('editNameCustom');
+  c.style.display = document.getElementById('editBaseName').value === '__custom__' ? 'block' : 'none';
+}
+
+function editStyle(id, name, code, desc, fabric, price, img){
+  toggleEdit();
+  document.getElementById('editFormAction').action = '/admin/style/' + id + '/edit';
+  
+  // Parse name into base + suffix
+  var parts = name.split('-');
+  var base = parts[0] || '';
+  var suffix = parts.slice(1).join('-') || '';
+  
+  var sel = document.getElementById('editBaseName');
+  // Try to find base in dropdown
+  var found = false;
+  for(var i = 0; i < sel.options.length; i++){
+    if(sel.options[i].value === base){
+      sel.value = base;
+      found = true;
+      break;
+    }
+  }
+  if(!found){
+    sel.value = '__custom__';
+    document.getElementById('editNameCustom').value = base;
+    document.getElementById('editNameCustom').style.display = 'block';
+  } else {
+    document.getElementById('editNameCustom').style.display = 'none';
+  }
+  
+  document.getElementById('editNameSuffix').value = suffix;
+  document.getElementById('editNameField').value = name;
+  document.getElementById('editCode').value = code;
+  document.getElementById('editPrice').value = price;
+  document.getElementById('editFabric').value = fabric;
+  document.getElementById('editDescription').value = desc;
+  
+  if(img){
+    document.getElementById('editCurrentImage').innerHTML = '当前: <img src="/uploads/' + img + '" style="width:36px;height:36px;object-fit:cover;vertical-align:middle;margin-left:4px;">';
+  } else {
+    document.getElementById('editCurrentImage').innerHTML = '';
+  }
+}
+
+document.getElementById('editBaseName').addEventListener('change', function(){
+  var c = document.getElementById('editNameCustom');
+  c.style.display = this.value === '__custom__' ? 'block' : 'none';
+  if(this.value !== '__custom__') c.value = '';
+});
+
+document.getElementById('editFormAction').addEventListener('submit', function(){
+  var base = document.getElementById('editBaseName').value;
+  var suffix = document.getElementById('editNameSuffix').value;
+  var custom = document.getElementById('editNameCustom').value;
+  var fullName = '';
+  if(base === '__custom__'){
+    fullName = custom;
+  } else if(base){
+    fullName = suffix ? base + '-' + suffix : base;
+  } else {
+    fullName = suffix;
+  }
+  document.getElementById('editNameField').value = fullName;
+});
+</script>
+{% endblock %}

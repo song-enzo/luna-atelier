@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}我的订单 · LUNA ATELIER{% endblock %}
+{% block content %}
+{% set hide_alerts = true %}
+
+<div class="orders-wrap">
+  <div class="status-bar"><span>--:--</span><span>🔋</span></div>
+  <div class="top-nav">
+    <a href="{{ url_for('guest_styles') }}" class="back-btn">←</a>
+    <div style="font-size:15px;font-weight:600;">我的订单</div>
+    <div class="icons"><span>🔍</span></div>
+  </div>
+
+  <div class="cat-strip">
+    <form method="GET" id="orderFilter">
+      {% for label, key in [('全部',''), ('待确认','pending'), ('制作中','cutting'), ('运输中','shipped'), ('已完成','completed')] %}
+      <button type="submit" name="status" value="{{ key }}" class="cat-btn {% if status_filter == key %}active{% endif %}"
+        onclick="this.form.submit()">{{ label }}</button>
+      {% endfor %}
+    </form>
+  </div>
+
+  <div class="orders-list">
+    {% if orders %}
+      {% for order in orders %}
+      <a href="{{ url_for('guest_order_detail', order_id=order.id) }}" style="text-decoration:none;color:inherit;display:block;">
+      <div class="order-item">
+        <div class="thumb">
+          {% if order.style and order.style.image_path %}
+          <img src="{{ url_for('uploaded_file', filename=order.style.image_path) }}" alt="">
+          {% else %}
+          <div style="width:100%;height:100%;background:#f0ece6;"></div>
+          {% endif %}
+        </div>
+        <div class="detail">
+          <div class="title">{{ order.style.name if order.style else '未知款式' }} · {{ order.size or 'M' }} · {{ order.total_qty }}件</div>
+          <div class="order-no">{{ order.order_no }}</div>
+          <div><span class="status-badge s-{{ order.status }}">{{ STATUS_MAP.get(order.status, order.status) }}</span></div>
+          <div class="qty">{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+          {% if order.status == 'shipped' %}
+          <form action="{{ url_for('confirm_receipt', order_id=order.id) }}" method="POST" class="confirm-form" style="margin-top:6px;">
+            <button type="submit" class="confirm-btn">确认收货</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      </a>
+      {% endfor %}
+    {% else %}
+    <div class="empty-state">
+      <div class="icon">📋</div>
+      暂无订单<br><br>
+      <a href="{{ url_for('guest_styles') }}" style="color:#111;font-size:13px;">去浏览款式 →</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

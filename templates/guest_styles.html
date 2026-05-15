@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}款式浏览 · LUNA ATELIER{% endblock %}
+{% block content %}
+{% set hide_nav = true %}
+<div class="status-bar"><span>--:--</span><span>🔋</span></div>
+<div class="top-nav">
+  <div class="menu"><span></span><span></span><span></span></div>
+  <div class="brand-sm">LUNA <span>ATELIER</span></div>
+  <div class="icons">
+    <a href="{{ url_for('guest_orders') }}">📋</a>
+  </div>
+</div>
+<div class="cat-strip">
+  <form method="GET" id="catForm">
+    {% for label, key in [('全部',''), ('西装','blazer'), ('连衣裙','dress'), ('大衣','coat'), ('上衣','top'), ('裤装','pants'), ('半裙','skirt')] %}
+    <button type="submit" name="cat" value="{{ key }}" class="cat-btn {% if cat == key %}active{% endif %}"
+      onclick="this.form.submit()">{{ label }}</button>
+    {% endfor %}
+  </form>
+</div>
+<div class="search-bar">
+  <form method="GET">
+    {% if cat %}<input type="hidden" name="cat" value="{{ cat }}">{% endif %}
+    <div class="inner">
+      <span style="font-size:14px;color:#999;">🔍</span>
+      <input type="text" name="q" placeholder="搜索型号 / 款式名称…" value="{{ q }}">
+    </div>
+  </form>
+</div>
+
+{% if styles %}
+<div class="cat-grid">
+  {% for style in styles %}
+  <a href="{{ url_for('new_order', style_id=style.id) }}" class="cat-card" style="text-decoration:none;color:inherit;">
+    <div class="img">
+      {% if style.image_path %}
+      <img src="{{ url_for('uploaded_file', filename=style.image_path) }}" alt="{{ style.name }}" loading="lazy">
+      {% else %}
+      <div style="width:100%;height:100%;background:#f0ece6;display:flex;align-items:center;justify-content:center;color:#ccc;">暂无图片</div>
+      {% endif %}
+    </div>
+    <div class="body">
+      <div class="name">{{ style.name }}</div>
+      {% if style.price %}<div class="price">€ {{ '%.2f'|format(style.price) }}</div>{% endif %}
+      <div class="sku">{{ style.code or '' }}</div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="icon">👗</div>
+  {% if q %}未找到匹配"{{ q }}"的款式{% else %}暂无款式{% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}订单详情 · LUNA ATELIER{% endblock %}
+{% block content %}
+{% set hide_alerts = true %}
+
+<div class="order-detail-wrap">
+  <div class="top-nav" style="position:static;">
+    <a href="{{ url_for('guest_orders') }}" class="back-btn">←</a>
+    <div style="font-size:15px;font-weight:600;">订单详情</div>
+    <div></div>
+  </div>
+
+  <div class="od-header">
+    <div class="no">{{ order.order_no }}</div>
+    <div class="product">{{ order.style.name if order.style else '未知款式' }}</div>
+    <div class="status"><span class="status-badge s-{{ order.status }}">{{ STATUS_MAP.get(order.status, order.status) }}</span></div>
+  </div>
+
+  <div class="od-section">
+    <div class="label">款式信息</div>
+    <div class="value">{{ order.style.code if order.style else '' }}</div>
+    <div class="value" style="font-size:12px;color:#888;">{{ order.style.fabric_info if order.style else '' }}</div>
+    {% if order.style and order.style.image_path %}
+    <div style="margin-top:8px;">
+      <img src="{{ url_for('uploaded_file', filename=order.style.image_path) }}" style="width:100%;max-width:240px;border-radius:2px;">
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="od-section">
+    <div class="label">订单明细</div>
+    <table class="value-table">
+      <tr><th>尺码</th><th>数量</th><th>颜色</th></tr>
+      <tr>
+        <td>{{ order.size or 'M' }}</td>
+        <td>{{ order.total_qty }}件</td>
+        <td>
+          {% if order.items %}
+            {% for item in order.items %}{{ item.color_name }}{% if not loop.last %}, {% endif %}{% endfor %}
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  {% if order.remark %}
+  <div class="od-section">
+    <div class="label">备注</div>
+    <div class="value">{{ order.remark }}</div>
+  </div>
+  {% endif %}
+
+  {% if order.total_amount %}
+  <div class="od-section">
+    <div class="label">金额</div>
+    <div class="value">总金额：€ {{ '%.2f'|format(order.total_amount) }}</div>
+    {% if order.paid_amount %}
+    <div class="value" style="font-size:12px;color:#888;">已付：€ {{ '%.2f'|format(order.paid_amount) }}</div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="od-section">
+    <div class="label">时间线</div>
+    {% if logs %}
+      {% for log in logs %}
+      <div style="padding:4px 0;font-size:12px;color:#666;border-bottom:1px solid #f5f5f5;">
+        <span style="color:#aaa;font-size:10px;">{{ log.created_at.strftime('%m-%d %H:%M') }}</span>
+        {% if log.status_from %}{{ STATUS_MAP.get(log.status_from, log.status_from) }} → {% endif %}
+        <strong>{{ STATUS_MAP.get(log.status_to, log.status_to) }}</strong>
+        {% if log.note %} · {{ log.note }}{% endif %}
+      </div>
+      {% endfor %}
+    {% else %}
+    <div style="font-size:12px;color:#aaa;">暂无记录</div>
+    {% endif %}
+  </div>
+
+  <div class="od-actions">
+    <a href="{{ url_for('guest_orders') }}" class="btn btn-outline">返回订单列表</a>
+    {% if order.status == 'shipped' %}
+    <form action="{{ url_for('confirm_receipt', order_id=order.id) }}" method="POST" class="confirm-form" style="flex:1;">
+      <button type="submit" class="btn btn-primary" style="width:100%;">确认收货</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

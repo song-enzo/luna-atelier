@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}登录 · LUNA ATELIER{% endblock %}
+{% block content %}
+<div class="login-screen">
+  <div class="brand-big">LUNA <span>ATELIER</span></div>
+  <div class="brand-sub">Fashion Order System</div>
+  <form method="POST">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+        <div class="login-error">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    <input class="login-input" type="text" name="username" placeholder="账号" required autofocus>
+    <input class="login-input" type="password" name="password" placeholder="密码" required>
+    <button class="login-btn" type="submit">登 录</button>
+  </form>
+  <div class="login-footer">管理员分配的账号 · 联系客服开通</div>
+</div>
+{% endblock %}

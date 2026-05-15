@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}订单详情 — LUNA ATELIER{% endblock %}
+{% block content %}
+
+<div style="padding:12px 16px 0;background:#fff;">
+  <a href="{{ url_for('admin_orders') }}" style="font-size:12px;color:#888;text-decoration:none;">&larr; 返回订单列表</a>
+</div>
+
+<div class="page-title" style="padding-bottom:12px;">
+  {{ order.order_no }}
+  <span class="status-badge s-{{ order.status }}" style="margin-left:8px;vertical-align:middle;">{{ STATUS_MAP[order.status] }}</span>
+</div>
+
+<div class="admin-table-wrap" style="padding-top:0;">
+  <!-- Order Info -->
+  <div style="display:flex;flex-wrap:wrap;gap:16px;padding:12px 0;border-bottom:1px solid #f0f0f0;font-size:12px;">
+    <div><strong>客人：</strong>{{ order.customer.nickname or order.customer.username }}</div>
+    <div><strong>款式：</strong>{{ order.style.name }}</div>
+    <div><strong>数量：</strong>{{ order.total_qty }}件</div>
+    <div><strong>尺码：</strong>{{ order.size }}</div>
+    <div><strong>日期：</strong>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+    {% if order.remark %}
+    <div><strong>备注：</strong>{{ order.remark }}</div>
+    {% endif %}
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:16px 0;">
+
+    <!-- Left Column -->
+    <div>
+
+      <!-- Items Table -->
+      <h3 style="font-size:13px;font-weight:600;margin-bottom:8px;color:#333;">花色清单</h3>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>花色</th>
+            <th>色样</th>
+            <th>数量</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in order.items %}
+          <tr>
+            <td>{{ item.color_name or '(未命名)' }}</td>
+            <td>
+              {% if item.swatch_image %}
+              <img src="{{ url_for('uploaded_file', filename=item.swatch_image) }}" alt="swatch" style="width:32px;height:32px;object-fit:cover;border-radius:2px;border:1px solid #eee;">
+              {% else %}
+              <span style="color:#ccc;">—</span>
+              {% endif %}
+            </td>
+            <td>{{ item.quantity }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="3" style="text-align:center;color:#bbb;">暂无花色项</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% if order.style.fabric_info %}
+      <div style="margin-top:8px;font-size:11px;color:#888;">🧵 布料：{{ order.style.fabric_info }}</div>
+      {% endif %}
+
+      <!-- Timeline / Log -->
+      <h3 style="font-size:13px;font-weight:600;margin:20px 0 8px;color:#333;">进度记录</h3>
+      {% if logs %}
+      <div style="font-size:12px;">
+        {% for log in logs %}
+        <div style="padding:8px 0;border-bottom:1px solid #f5f5f5;">
+          <div style="display:flex;justify-content:space-between;color:#888;font-size:10px;">
+            <span>{{ log.operator }}</span>
+            <span>{{ log.created_at.strftime('%m/%d %H:%M') }}</span>
+          </div>
+          <div style="margin-top:2px;color:#333;">
+            {% if log.status_from %}{{ STATUS_MAP[log.status_from] }} → {% endif %}
+            <strong>{{ STATUS_MAP[log.status_to] }}</strong>
+          </div>
+          {% if log.note %}
+          <div style="font-size:11px;color:#888;margin-top:2px;">{{ log.note }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding:20px 0;">暂无记录</div>
+      {% endif %}
+    </div>
+
+    <!-- Right Column -->
+    <div>
+
+      <!-- Status Update Form -->
+      <div style="background:#f8f8f8;padding:14px;border-radius:4px;margin-bottom:16px;">
+        <h3 style="font-size:13px;font-weight:600;margin-bottom:10px;color:#333;">更新状态</h3>
+        <form method="POST">
+          <input type="hidden" name="action" value="update_status">
+          <div class="form-group">
+            <label>新状态</label>
+            <select name="status">
+              {% for key, label in STATUS_MAP.items() %}
+              <option value="{{ key }}" {% if order.status == key %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>备注</label>
+            <input type="text" name="note" placeholder="更新说明（可选）">
+          </div>
+          <button type="submit" class="btn-admin dark" style="width:100%;">更新状态</button>
+        </form>
+      </div>
+
+      <!-- Amount Form -->
+      <div style="background:#f8f8f8;padding:14px;border-radius:4px;">
+        <h3 style="font-size:13px;font-weight:600;margin-bottom:10px;color:#333;">金额</h3>
+        <form method="POST">
+          <input type="hidden" name="action" value="update_amount">
+          <div class="form-group">
+            <label>总金额 (€)</label>
+            <input type="number" name="total_amount" step="0.01" value="{{ order.total_amount or '' }}">
+          </div>
+          <div class="form-group">
+            <label>已付金额 (€)</label>
+            <input type="number" name="paid_amount" step="0.01" value="{{ order.paid_amount or '' }}">
+          </div>
+          <button type="submit" class="btn-admin dark" style="width:100%;">更新金额</button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>LUNA ATELIER</h1>
+  <p>专业女装定制 · 品质至上</p>
+  {% if not current_user.is_authenticated %}
+  <div style="display:flex;gap:1rem;justify-content:center;">
+    <a href="{{ url_for('login') }}" class="btn btn-primary">登录系统</a>
+    <a href="{{ url_for('guest_styles') }}" class="btn btn-outline">浏览款式</a>
+  </div>
+  {% endif %}
+</section>
+
+<div class="container">
+  <div class="section-title text-center" style="margin-top:2rem;">COLLECTION</div>
+  <h2 class="text-center">2026 春夏系列</h2>
+  
+  <div class="product-grid">
+    {% for style in styles[:24] %}
+    <div class="product-card" onclick="location.href='{{ url_for('new_order', style_id=style.id) if current_user.is_authenticated else url_for('login') }}'">
+      <div class="img-wrap">
+        {% if style.image_path %}
+        <img src="{{ url_for('static_files', filename=style.image_path) }}" alt="{{ style.name }}">
+        {% else %}
+        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--bg-alt);color:var(--text-muted);font-size:3rem;">🧥</div>
+        {% endif %}
+      </div>
+      <div class="info">
+        <h3>{{ style.name }}</h3>
+        <div class="meta">{{ style.code or '' }}</div>
+        {% if style.price %}
+        <div class="price">€{{ "%.2f"|format(style.price) }}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
