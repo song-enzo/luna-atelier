@@ -155,7 +155,11 @@ def init_db(app):
         if 'last_login_ip' not in user_cols:
             with db.engine.connect() as conn:
                 conn.execute(text('ALTER TABLE users ADD COLUMN last_login_ip VARCHAR(45) DEFAULT \'\''))
-                conn.execute(text('ALTER TABLE users ADD COLUMN last_login_at DATETIME DEFAULT NULL'))
+                from sqlalchemy import text as sa_text
+                if 'postgresql' in db.engine.url.drivername:
+                    conn.execute(sa_text('ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP DEFAULT NULL'))
+                else:
+                    conn.execute(text('ALTER TABLE users ADD COLUMN last_login_at DATETIME DEFAULT NULL'))
                 conn.commit()
         
         # FabricImage columns migration
