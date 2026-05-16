@@ -3,58 +3,101 @@
 {% block content %}
 {% set hide_alerts = true %}
 
-<div class="orders-wrap">
-  <div class="status-bar"><span>--:--</span><span>🔋</span></div>
-  <div class="top-nav">
-    <a href="{{ url_for('guest_styles') }}" class="back-btn">←</a>
-    <div style="font-size:18px;font-weight:600;">我的订单</div>
-    <div class="icons"><span>🔍</span></div>
-  </div>
+<!-- Sidebar Overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
-  <div class="cat-strip">
-    <form method="GET" id="orderFilter">
-      {% for label, key in [('全部',''), ('待确认','pending'), ('已确认','confirmed'), ('裁剪中','cutting'), ('车缝中','sewing'), ('质检中','qc'), ('运输中','shipped'), ('已完成','completed')] %}
-      <button type="submit" name="status" value="{{ key }}" class="cat-btn {% if status_filter == key %}active{% endif %}"
-        onclick="this.form.submit()">{{ label }}</button>
-      {% endfor %}
-    </form>
-  </div>
-
-  <div class="orders-list">
-    {% if orders %}
-      {% for order in orders %}
-      <div class="order-item-wrap">
-        <a href="{{ url_for('guest_order_detail', order_id=order.id) }}" class="order-link">
-          <div class="order-item">
-            <div class="thumb">
-              {% if order.style and order.style.image_path %}
-              <img src="{{ url_for('static', filename=order.style.image_path) }}" alt="">
-              {% else %}
-              <div style="width:100%;height:100%;background:#f0ece6;"></div>
-              {% endif %}
-            </div>
-            <div class="detail">
-              <div class="title">{{ order.style.name if order.style else '未知款式' }}</div>
-              <div class="order-no">{{ order.order_no }}</div>
-              <div><span class="status-badge s-{{ order.status }}">{{ STATUS_MAP.get(order.status, order.status) }}</span></div>
-              <div class="qty">{{ order.total_qty }}件 · {{ order.created_at.strftime('%m-%d %H:%M') }}</div>
-            </div>
-          </div>
-        </a>
-        {% if order.status == 'shipped' %}
-        <form action="{{ url_for('confirm_receipt', order_id=order.id) }}" method="POST" class="confirm-form" style="padding:0 14px 8px;">
-          <button type="submit" class="confirm-btn" style="width:100%;padding:10px;font-size:14px;">确认收货</button>
-        </form>
-        {% endif %}
-      </div>
-      {% endfor %}
-    {% else %}
-    <div class="empty-state">
-      <div class="icon">📋</div>
-      暂无订单<br><br>
-      <a href="{{ url_for('guest_styles') }}" style="color:#111;font-size:13px;">去浏览款式 →</a>
-    </div>
-    {% endif %}
-  </div>
+<!-- Sidebar Menu -->
+<div class="sidebar-menu" id="sidebarMenu">
+  <div class="brand">LUNA <span>ATELIER</span></div>
+  <div class="divider"></div>
+  <a href="{{ url_for('guest_styles') }}" class="cat-link" onclick="closeSidebar()">全部款式</a>
+  <a href="{{ url_for('guest_styles', cat='dress') }}" class="cat-link" onclick="closeSidebar()">连衣裙</a>
+  <a href="{{ url_for('guest_styles', cat='shirt') }}" class="cat-link" onclick="closeSidebar()">衬衫</a>
+  <a href="{{ url_for('guest_styles', cat='jacket') }}" class="cat-link" onclick="closeSidebar()">外套</a>
+  <a href="{{ url_for('guest_styles', cat='coat') }}" class="cat-link" onclick="closeSidebar()">大衣</a>
+  <a href="{{ url_for('guest_styles', cat='knitwear') }}" class="cat-link" onclick="closeSidebar()">针织衫</a>
+  <a href="{{ url_for('guest_styles', cat='trouser') }}" class="cat-link" onclick="closeSidebar()">裤装</a>
+  <a href="{{ url_for('guest_styles', cat='skirt') }}" class="cat-link" onclick="closeSidebar()">裙装</a>
+  <a href="{{ url_for('guest_styles', cat='suit') }}" class="cat-link" onclick="closeSidebar()">套装</a>
+  <div class="divider"></div>
+  <a href="{{ url_for('guest_orders') }}" class="cat-link active">📋 我的订单</a>
+  <div class="divider"></div>
+  <a href="{{ url_for('logout') }}" class="cat-link" onclick="closeSidebar()">🚪 退出登录</a>
 </div>
+
+<style>
+.sidebar-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:999; display:none; }
+.sidebar-overlay.active { display:block; }
+.sidebar-menu { position:fixed; left:-280px; top:0; bottom:0; width:280px; background:#fff; z-index:1000; transition:left 0.3s ease; padding:20px; overflow-y:auto; }
+.sidebar-menu.active { left:0; }
+.sidebar-menu .brand { font-size:18px; font-weight:700; margin-bottom:20px; letter-spacing:1px; }
+.sidebar-menu .brand span { color:#c9a96e; }
+.sidebar-menu .cat-link { display:block; padding:10px 0; font-size:14px; color:#333; text-decoration:none; border-bottom:1px solid #f5f5f5; }
+.sidebar-menu .cat-link:hover { color:#111; font-weight:600; }
+.sidebar-menu .cat-link.active { font-weight:700; color:#111; }
+.sidebar-menu .divider { height:1px; background:#eee; margin:12px 0; }
+</style>
+
+<div class="top-nav">
+  <div class="menu" onclick="toggleSidebar()"><span></span><span></span><span></span></div>
+  <div class="brand-sm">我的订单</div>
+  <div class="icons"></div>
+</div>
+
+<div class="cat-strip">
+  <form method="GET" id="orderFilter">
+    {% for label, key in [('全部',''), ('待确认','pending'), ('已确认','confirmed'), ('裁剪中','cutting'), ('车缝中','sewing'), ('质检中','qc'), ('运输中','shipped'), ('已完成','completed')] %}
+    <button type="submit" name="status" value="{{ key }}" class="cat-btn {% if status_filter == key %}active{% endif %}"
+      onclick="this.form.submit()">{{ label }}</button>
+    {% endfor %}
+  </form>
+</div>
+
+<div class="orders-list">
+  {% if orders %}
+    {% for order in orders %}
+    <div class="order-item-wrap">
+      <a href="{{ url_for('guest_order_detail', order_id=order.id) }}" class="order-link">
+        <div class="order-item">
+          <div class="thumb">
+            {% if order.style and order.style.image_path %}
+            <img src="{{ url_for('static', filename=order.style.image_path) }}" alt="">
+            {% else %}
+            <div style="width:100%;height:100%;background:#f0ece6;"></div>
+            {% endif %}
+          </div>
+          <div class="detail">
+            <div class="title">{{ order.style.name if order.style else '未知款式' }}</div>
+            <div class="order-no">{{ order.order_no }}</div>
+            <div><span class="status-badge s-{{ order.status }}">{{ STATUS_MAP.get(order.status, order.status) }}</span></div>
+            <div class="qty">{{ order.total_qty }}件 · {{ order.created_at.strftime('%m-%d %H:%M') }}</div>
+          </div>
+        </div>
+      </a>
+      {% if order.status == 'shipped' %}
+      <form action="{{ url_for('confirm_receipt', order_id=order.id) }}" method="POST" class="confirm-form" style="padding:0 14px 8px;">
+        <button type="submit" class="confirm-btn" style="width:100%;padding:10px;font-size:14px;">确认收货</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+  <div class="empty-state" style="padding:60px 16px;">
+    <div class="icon">📋</div>
+    暂无订单<br><br>
+    <a href="{{ url_for('guest_styles') }}" style="color:#111;font-size:13px;">去浏览款式 →</a>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function toggleSidebar(){
+  document.getElementById('sidebarOverlay').classList.toggle('active');
+  document.getElementById('sidebarMenu').classList.toggle('active');
+}
+function closeSidebar(){
+  document.getElementById('sidebarOverlay').classList.remove('active');
+  document.getElementById('sidebarMenu').classList.remove('active');
+}
+</script>
 {% endblock %}
