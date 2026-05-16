@@ -41,12 +41,23 @@ login_manager.login_view = 'login'
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'heif'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# Max upload: 20MB per file
+app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024
+
+@app.errorhandler(413)
+def too_large(e):
+    flash('文件太大了！每张图片不能超过 20MB，请压缩后再上传', 'error')
+    return redirect(request.url or url_for('admin_styles'))
+
 def save_upload(file, subdir=''):
     ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'jpg'
+    # Convert HEIC/HEIF to JPEG
+    if ext in ('heic', 'heif'):
+        ext = 'jpg'
     name = f"{uuid.uuid4().hex}.{ext}"
     path = os.path.join(app.config['UPLOAD_FOLDER'], subdir, name)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -58,7 +69,7 @@ def save_upload(file, subdir=''):
         if img.width > 1200:
             ratio = 1200 / img.width
             img = img.resize((1200, int(img.height * ratio)), PILImage.LANCZOS)
-        img.save(path, 'JPEG' if ext.lower() in ('jpg', 'jpeg') else 'PNG', quality=80, optimize=True)
+        img.save(path, 'JPEG', quality=80, optimize=True)
     except Exception:
         file.seek(0)
         file.save(path)
@@ -470,13 +481,20 @@ def admin_styles():
                 pass
         if request.files.get('image') and allowed_file(request.files['image'].filename):
             style.image_path = save_upload(request.files['image'], 'styles')
+        elif request.files.get('image') and request.files['image'].filename:
+            flash('主图格式不支持，请上传 JPG/PNG/WebP 格式', 'error')
         # Multi-image gallery upload
         if request.files.getlist('gallery_files'):
             gallery_files = request.files.getlist('gallery_files')
             gallery = []
+            skipped = 0
             for gf in gallery_files:
                 if gf and gf.filename and allowed_file(gf.filename):
                     gallery.append(save_upload(gf, 'styles'))
+                elif gf and gf.filename:
+                    skipped += 1
+            if skipped:
+                flash(f'{skipped} 张图片因格式不支持被跳过（仅支持 JPG/PNG/WebP）', 'error')
             if gallery:
                 style.gallery = json.dumps(gallery)
         db.session.add(style)
@@ -509,13 +527,20 @@ def admin_style_edit(id):
     style.fabric_id = int(fabric_id) if fabric_id and fabric_id.isdigit() else None
     if request.files.get('image') and allowed_file(request.files['image'].filename):
         style.image_path = save_upload(request.files['image'], 'styles')
+    elif request.files.get('image') and request.files['image'].filename:
+        flash('主图格式不支持，请上传 JPG/PNG/WebP 格式', 'error')
     # Multi-image gallery upload
     if request.files.getlist('gallery_files'):
         gallery_files = request.files.getlist('gallery_files')
         existing_gallery = json.loads(style.gallery or '[]')
+        skipped = 0
         for gf in gallery_files:
             if gf and gf.filename and allowed_file(gf.filename):
                 existing_gallery.append(save_upload(gf, 'styles'))
+            elif gf and gf.filename:
+                skipped += 1
+        if skipped:
+            flash(f'{skipped} 张图片因格式不支持被跳过（仅支持 JPG/PNG/WebP）', 'error')
         style.gallery = json.dumps(existing_gallery)
     db.session.commit()
     flash('款式已更新', 'success')
@@ -614,6 +639,100 @@ def admin_fabrics():
 def api_fabrics():
     fabrics = Fabric.query.order_by(Fabric.name).all()
     return jsonify([{'id': f.id, 'name': f.name, 'composition': f.composition} for f in fabrics])
+
+# ========== 购物车结账 API ==========
+
+@app.route('/api/cart/checkout', methods=['POST'])
+@login_required
+def api_cart_checkout():
+    """Receive cart items via AJAX and create orders (one per style)"""
+    data = request.json
+    if not data or not data.get('items'):
+        return jsonify({'error': '请至少添加一个花色'}), 400
+
+    items = data['items']
+    remark = data.get('remark', '')
+
+    # Group items by style_id
+    from collections import defaultdict
+    items_by_style = defaultdict(list)
+    for item in items:
+        sid = item.get('style_id')
+        if sid:
+            items_by_style[sid].append(item)
+
+    if not items_by_style:
+        return jsonify({'error': '订单数据无效'}), 400
+
+    order_ids = []
+
+    for style_id, style_items in items_by_style.items():
+        style = Style.query.get(int(style_id))
+        if not style:
+            continue
+
+        # Calculate total qty
+        total_qty = 0
+        for item in style_items:
+            sq = item.get('size_quantities', {})
+            if isinstance(sq, dict):
+                for v in sq.values():
+                    try:
+                        total_qty += max(0, int(v))
+                    except (ValueError, TypeError):
+                        pass
+
+        order = Order(
+            order_no=generate_order_no(),
+            user_id=current_user.id,
+            style_id=int(style_id),
+            status='pending',
+            size='M',
+            total_qty=total_qty,
+            remark=remark,
+        )
+        db.session.add(order)
+        db.session.flush()
+
+        for i, item in enumerate(style_items):
+            swatch_path = ''
+            if item.get('swatch_data'):
+                try:
+                    import base64
+                    raw = item['swatch_data']
+                    if ',' in raw:
+                        img_data = base64.b64decode(raw.split(',')[1])
+                        swatch_name = f"{uuid.uuid4().hex}.png"
+                        swatch_path = os.path.join('swatches', swatch_name)
+                        os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'swatches'), exist_ok=True)
+                        with open(os.path.join(app.config['UPLOAD_FOLDER'], 'swatches', swatch_name), 'wb') as f:
+                            f.write(img_data)
+                except Exception:
+                    swatch_path = ''
+
+            oi = OrderItem(
+                order_id=order.id,
+                color_name=item.get('color_name', ''),
+                swatch_image=swatch_path,
+                size_quantities=json.dumps(item.get('size_quantities', {})),
+                sort_order=i
+            )
+            db.session.add(oi)
+
+        log_entry = OrderLog(
+            order_id=order.id, status_from='', status_to='pending',
+            note='订单创建', operator=current_user.nickname or current_user.username
+        )
+        db.session.add(log_entry)
+        order_ids.append(order.id)
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'order_ids': order_ids,
+        'redirect': url_for('guest_order_detail', order_id=order_ids[0])
+    })
 
 # ========== 颜色管理 API ==========
 
