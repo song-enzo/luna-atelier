@@ -133,16 +133,7 @@ def guest_styles():
     cat = request.args.get('cat', '')
     q = request.args.get('q', '').strip()
     
-    # Get categories from DB — collect unique base names from styles
-    all_styles = Style.query.filter_by(is_active=True).all()
-    categories = set()
-    for s in all_styles:
-        parts = s.name.split('-')
-        if parts[0]:
-            categories.add(parts[0])
-    categories = sorted(categories)
-    
-    # Category filter using stored categories
+    # Category filter by code field (连衣裙, 衬衫, etc.)
     cat_map = {
         'dress': ['连衣裙'],
         'shirt': ['衬衫'],
@@ -155,18 +146,16 @@ def guest_styles():
     }
     if cat and cat in cat_map:
         import functools
-        filters = [Style.name.like(f'%{k}%') for k in cat_map[cat]]
+        filters = [Style.code == k for k in cat_map[cat]]
         query = query.filter(functools.reduce(lambda a, b: a | b, filters))
     
-    # Search by name or code
+    # Search by style number (name field)
     if q:
-        query = query.filter(
-            db.or_(Style.name.like(f'%{q}%'), Style.code.like(f'%{q}%'))
-        )
+        query = query.filter(Style.name.like(f'%{q}%'))
     
-    # Sort by newest first, limit to 30
+    # Sort by newest first, limit to 32
     styles = query.order_by(Style.created_at.desc()).limit(32).all()
-    return render_template('guest_styles.html', styles=styles, cat=cat, q=q, categories=categories)
+    return render_template('guest_styles.html', styles=styles, cat=cat, q=q)
 
 @app.route('/guest/order/<int:style_id>', methods=['GET', 'POST'])
 @login_required
@@ -466,6 +455,11 @@ def admin_styles():
         if not name:
             flash('款式名称不能为空', 'error')
             return redirect(url_for('admin_styles'))
+        # Check unique name
+        existing = Style.query.filter_by(name=name).first()
+        if existing:
+            flash(f'编号 "{name}" 已被使用（款式 #{existing.id}），请换一个', 'error')
+            return redirect(url_for('admin_styles'))
         style = Style(
             name=name,
             code=request.form.get('code', '').strip(),
@@ -519,6 +513,11 @@ def admin_style_edit(id):
     style = Style.query.get_or_404(id)
     name = request.form.get('name', '').strip()
     if name:
+        # Check unique name (exclude self)
+        existing = Style.query.filter(Style.name == name, Style.id != id).first()
+        if existing:
+            flash(f'编号 "{name}" 已被使用（款式 #{existing.id}），请换一个', 'error')
+            return redirect(url_for('admin_styles_edit', id=id))
         style.name = name
     style.code = request.form.get('code', '')
     style.description = request.form.get('description', '')

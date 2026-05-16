@@ -40,19 +40,21 @@
 
 <div class="top-nav">
   <div class="menu" onclick="toggleSidebar()"><span></span><span></span><span></span></div>
-  <div class="brand-sm">LUNA <span>ATELIER</span></div>
-  <div class="icons">
+  <div class="brand-sm">
+    {% if cat %}
+      {% set cat_names = {'dress':'连衣裙','shirt':'衬衫','jacket':'外套','coat':'大衣','knitwear':'针织衫','trouser':'裤装','skirt':'裙装','suit':'套装'} %}
+      {{ cat_names.get(cat, '款式') }}
+    {% else %}
+      全部款式
+    {% endif %}
   </div>
-</div>
-
-<div class="search-bar">
-  <form method="GET">
-    {% if cat %}<input type="hidden" name="cat" value="{{ cat }}">{% endif %}
-    <div class="inner">
-      <span style="font-size:14px;color:#999;">🔍</span>
-      <input type="text" name="q" placeholder="搜索型号 / 款式名称…" value="{{ q }}">
-    </div>
-  </form>
+  <div class="icons">
+    <form method="GET" id="searchForm" style="display:flex;align-items:center;gap:4px;">
+      {% if cat %}<input type="hidden" name="cat" value="{{ cat }}">{% endif %}
+      <input type="text" name="q" placeholder="搜编号…" value="{{ q }}"
+        style="width:90px;padding:4px 8px;border:1px solid #ddd;border-radius:12px;font-size:12px;font-family:inherit;outline:none;">
+    </form>
+  </div>
 </div>
 
 {% if styles %}
@@ -67,12 +69,8 @@
       {% endif %}
     </div>
     <div class="body">
-      <div class="name">{{ style.name }}</div>
+      <div class="name">#{{ style.name }}</div>
       {% if style.price %}<div class="price">€ {{ '%.2f'|format(style.price) }}</div>{% endif %}
-      <div class="sku">{{ style.code or '' }}</div>
-      <div style="font-size:10px;color:#bbb;margin-top:2px;">
-        {% if style.created_at %}{{ style.created_at.strftime('%Y-%m-%d') }}{% endif %}
-      </div>
     </div>
   </a>
   {% endfor %}
@@ -80,7 +78,7 @@
 {% else %}
 <div class="empty-state">
   <div class="icon">👗</div>
-  {% if q %}未找到匹配"{{ q }}"的款式{% else %}暂无款式{% endif %}
+  {% if q %}未找到编号"{{ q }}"{% else %}暂无款式{% endif %}
 </div>
 {% endif %}
 
@@ -93,5 +91,7 @@ function closeSidebar(){
   document.getElementById('sidebarOverlay').classList.remove('active');
   document.getElementById('sidebarMenu').classList.remove('active');
 }
+// Auto-submit search on Enter
+document.getElementById('searchForm')?.addEventListener('submit', function(){});
 </script>
 {% endblock %}

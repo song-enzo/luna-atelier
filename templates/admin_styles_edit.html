@@ -34,12 +34,22 @@
     <form method="POST" enctype="multipart/form-data" action="{% if style %}{{ url_for('admin_style_edit', id=style.id) }}{% else %}{{ url_for('admin_styles') }}{% endif %}">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div class="form-group">
-          <label>款式名称 *</label>
-          <input type="text" name="name" value="{{ style.name if style else '' }}" required placeholder="如：法式碎花连衣裙-白底">
+          <label>款式编号 *</label>
+          <input type="text" name="name" value="{{ style.name if style else '' }}" required placeholder="如：5003">
         </div>
         <div class="form-group">
-          <label>款式编号</label>
-          <input type="text" name="code" value="{{ style.code if style else '' }}" placeholder="5位数编号">
+          <label>款式类型</label>
+          <select name="code" style="width:100%;padding:8px 10px;border:1px solid #ddd;font-size:13px;font-family:inherit;border-radius:2px;">
+            <option value="">— 选择品类 —</option>
+            <option value="连衣裙" {% if style and style.code == '连衣裙' %}selected{% endif %}>连衣裙</option>
+            <option value="衬衫" {% if style and style.code == '衬衫' %}selected{% endif %}>衬衫</option>
+            <option value="外套" {% if style and style.code == '外套' %}selected{% endif %}>外套</option>
+            <option value="大衣" {% if style and style.code == '大衣' %}selected{% endif %}>大衣</option>
+            <option value="针织衫" {% if style and style.code == '针织衫' %}selected{% endif %}>针织衫</option>
+            <option value="裤装" {% if style and style.code == '裤装' %}selected{% endif %}>裤装</option>
+            <option value="裙装" {% if style and style.code == '裙装' %}selected{% endif %}>裙装</option>
+            <option value="套装" {% if style and style.code == '套装' %}selected{% endif %}>套装</option>
+          </select>
         </div>
       </div>
       
