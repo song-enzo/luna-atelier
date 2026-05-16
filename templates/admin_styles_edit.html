@@ -20,6 +20,23 @@
   line-height: 1;
 }
 .color-tag .del-color:hover { color: #c41e3a; }
+.img-item {
+  position:relative; display:inline-block; border-radius:4px; overflow:hidden;
+  width:100px; height:100px; flex-shrink:0; cursor:pointer;
+}
+.img-item img { width:100%; height:100%; object-fit:cover; }
+.img-item .del-btn {
+  position:absolute; top:2px; right:2px; width:22px; height:22px; border-radius:50%;
+  background:rgba(0,0,0,.6); color:#fff; border:none; font-size:14px; line-height:22px;
+  text-align:center; cursor:pointer; display:none;
+}
+.img-item:hover .del-btn { display:block; }
+.img-item .primary-badge {
+  position:absolute; bottom:0; left:0; right:0; text-align:center;
+  background:rgba(0,0,0,.5); color:#fff; font-size:9px; padding:2px 0;
+}
+.img-item:not(.is-primary) { opacity:.7; }
+.img-item.is-primary { opacity:1; outline:3px solid #111; outline-offset:1px; }
 </style>
 
 <div class="page-title" style="padding-bottom:12px;">
@@ -31,11 +48,13 @@
     <h3 style="font-size:13px;font-weight:600;margin-bottom:12px;color:#333;">
       {% if style %}编辑款式 #{{ style.id }}{% else %}添加新款{% endif %}
     </h3>
-    <form method="POST" enctype="multipart/form-data" action="{% if style %}{{ url_for('admin_style_edit', id=style.id) }}{% else %}{{ url_for('admin_styles') }}{% endif %}">
+    <form method="POST" enctype="multipart/form-data" id="styleForm"
+      action="{% if style %}{{ url_for('admin_style_edit', id=style.id) }}{% else %}{{ url_for('admin_styles') }}{% endif %}">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div class="form-group">
           <label>款式编号 *</label>
-          <input type="text" name="name" value="{{ style.name if style else '' }}" required placeholder="如：5003">
+          <input type="text" name="name" id="styleName" value="{{ style.name if style else '' }}" required placeholder="如：5003">
+          <div id="nameStatus" style="font-size:11px;margin-top:2px;"></div>
         </div>
         <div class="form-group">
           <label>款式类型</label>
@@ -104,56 +123,33 @@
       </div>
       
       <div class="form-group">
-        <label>参考图（主图）</label>
-        <input type="file" name="image" accept="image/*" style="padding:4px;font-size:12px;">
-        {% if style and style.image_path %}
-        <div style="margin-top:4px;">
-          <span style="font-size:11px;color:#888;">当前：</span>
-          <img src="{{ url_for('static', filename=style.image_path) }}" style="width:48px;height:48px;object-fit:cover;border-radius:2px;vertical-align:middle;border:2px solid #111;">
-        </div>
-        {% endif %}
-        <!-- All images for this style: click to set as primary -->
-        {% if style %}
-        <div style="margin-top:8px;">
-          <span style="font-size:10px;color:#999;display:block;margin-bottom:6px;">点击图片设为主图：</span>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;" id="imageSelector">
+        <label>图片上传</label>
+        <input type="file" name="images" accept="image/*" multiple style="padding:4px;font-size:12px;">
+        <div style="font-size:10px;color:#aaa;margin-top:2px;">可多选，第一张自动设为主图。点击图片设为主图，<b>×</b> 删除。</div>
+        <!-- Image gallery: existing + preview -->
+        <div id="imageGallery" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+          {% if style %}
             {% set all_imgs = [] %}
             {% if style.image_path %}{% set _ = all_imgs.append(style.image_path) %}{% endif %}
             {% set gallery = style.gallery|default('[]')|from_json %}
             {% for g in gallery %}{% set _ = all_imgs.append(g) %}{% endfor %}
             {% for img_path in all_imgs %}
-            <div style="position:relative;display:inline-block;{% if img_path == style.image_path %}outline:2px solid #111;outline-offset:1px;{% endif %}border-radius:2px;">
-              <img src="{{ url_for('static', filename=img_path) }}" style="width:56px;height:56px;object-fit:cover;border-radius:2px;cursor:pointer;{% if img_path == style.image_path %}opacity:1;{% else %}opacity:.7;{% endif %}" 
-                   data-path="{{ img_path }}" 
-                   onclick="setPrimaryImage(this, '{{ img_path }}')"
-                   title="{% if img_path == style.image_path %}当前主图{% else %}点击设为主图{% endif %}">
-              {% if img_path == style.image_path %}
-              <span style="position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:9px;color:#111;font-weight:600;white-space:nowrap;">主图</span>
-              {% endif %}
+            <div class="img-item {% if img_path == style.image_path %}is-primary{% endif %}" data-path="{{ img_path }}">
+              <img src="{{ url_for('static', filename=img_path) }}"
+                   onclick="setPrimary('{{ img_path }}')">
+              <button class="del-btn" onclick="deleteImage('{{ img_path }}')">&times;</button>
+              {% if img_path == style.image_path %}<div class="primary-badge">主图</div>{% endif %}
             </div>
             {% endfor %}
-          </div>
+          {% endif %}
+          <!-- JavaScript will append previews here -->
+          <div id="imagePreviewContainer" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
         </div>
-        {% endif %}
-      </div>
-
-      <div class="form-group">
-        <label>多图上传（额外展示图）</label>
-        <input type="file" name="gallery_files" accept="image/*" multiple style="padding:4px;font-size:12px;">
-        {% if style and style.gallery %}
-        {% set gallery = style.gallery|default('[]')|from_json %}
-        {% if gallery %}
-        <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;">
-          {% for g in gallery %}
-          <img src="{{ url_for('static', filename=g) }}" style="width:48px;height:48px;object-fit:cover;border-radius:2px;border:1px solid #eee;">
-          {% endfor %}
-        </div>
-        {% endif %}
-        {% endif %}
+        <input type="hidden" name="delete_images" id="deleteImagesField" value="">
       </div>
 
       <div style="display:flex;gap:8px;margin-top:4px;">
-        <button type="submit" class="btn-admin dark">{% if style %}保存修改{% else %}保存{% endif %}</button>
+        <button type="submit" class="btn-admin dark" id="saveBtn">{% if style %}保存修改{% else %}保存{% endif %}</button>
         <a href="{{ url_for('admin_styles') }}" class="btn-admin light">取消</a>
       </div>
     </form>
@@ -161,6 +157,8 @@
 </div>
 
 <script>
+var styleId = {{ style.id if style else 0 }};
+
 // Fabric select: show custom input when __custom__ selected
 var fabricSelects = document.querySelectorAll('select[name="fabric_id"]');
 fabricSelects.forEach(function(sel){
@@ -182,7 +180,6 @@ function addColor(){
   var sel = document.getElementById('colorSelect');
   var val = sel.value;
   if(!val) return;
-  // Check if already added
   var existing = document.querySelectorAll('#colorTags .color-tag');
   for(var i = 0; i < existing.length; i++){
     if(existing[i].textContent.trim().replace('×','') === val) return;
@@ -194,17 +191,14 @@ function addColor(){
   sel.value = '';
   updateColorsField();
 }
-
 function updateColorsField(){
   var tags = document.querySelectorAll('#colorTags .color-tag');
   var colors = [];
-  tags.forEach(function(t){
-    colors.push(t.textContent.trim().replace('×',''));
-  });
+  tags.forEach(function(t){ colors.push(t.textContent.trim().replace('×','')); });
   document.getElementById('colorsField').value = JSON.stringify(colors);
 }
 
-// Initialize: if editing, show custom fabric input if fabric_info exists but no fabric_id
+// Initialize: show custom fabric input if needed
 {% if style and not style.fabric_id and style.fabric_info %}
 document.addEventListener('DOMContentLoaded', function(){
   var sel = document.querySelector('select[name="fabric_id"]');
@@ -216,9 +210,39 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 {% endif %}
 
-// Set primary image via AJAX
-function setPrimaryImage(el, path){
-  var styleId = {{ style.id if style else 0 }};
+// ---- Image Management ----
+
+// File input preview: show selected files immediately
+document.querySelector('input[name="images"]').addEventListener('change', function(e){
+  var container = document.getElementById('imagePreviewContainer');
+  container.innerHTML = '';
+  var files = e.target.files;
+  for(var i = 0; i < files.length; i++){
+    (function(file){
+      var reader = new FileReader();
+      reader.onload = function(ev){
+        var div = document.createElement('div');
+        div.className = 'img-item' + (i === 0 ? ' is-primary' : '');
+        div.dataset.temp = '1';
+        var img = document.createElement('img');
+        img.src = ev.target.result;
+        img.style.cursor = 'default';
+        div.appendChild(img);
+        if(i === 0){
+          var badge = document.createElement('div');
+          badge.className = 'primary-badge';
+          badge.textContent = '新主图';
+          div.appendChild(badge);
+        }
+        container.appendChild(div);
+      };
+      reader.readAsDataURL(file);
+    })(files[i]);
+  }
+});
+
+// Set primary image (existing)
+function setPrimary(path){
   if(!styleId) return;
   fetch('/admin/style/' + styleId + '/set-primary', {
     method: 'POST',
@@ -227,15 +251,60 @@ function setPrimaryImage(el, path){
   })
   .then(function(r){ return r.json(); })
   .then(function(data){
-    if(data.success){
-      location.reload();
-    } else {
-      alert('设置失败');
-    }
+    if(data.success) location.reload();
+    else alert('设置失败');
   })
-  .catch(function(){
-    alert('请求失败');
-  });
+  .catch(function(){ alert('请求失败'); });
 }
+
+// Delete image (existing)
+function deleteImage(path){
+  if(!styleId) return;
+  if(!confirm('确认删除此图片？')) return;
+  fetch('/admin/style/' + styleId + '/delete-image', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({image_path: path})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    if(data.success) location.reload();
+    else alert('删除失败');
+  })
+  .catch(function(){ alert('请求失败'); });
+}
+
+// ---- Name uniqueness check (AJAX) before submit ----
+var nameCheckTimer = null;
+var nameAvailable = true;
+
+document.getElementById('styleName').addEventListener('input', function(){
+  var name = this.value.trim();
+  var status = document.getElementById('nameStatus');
+  if(!name){ status.textContent = ''; nameAvailable = true; return; }
+  if(nameCheckTimer) clearTimeout(nameCheckTimer);
+  nameCheckTimer = setTimeout(function(){
+    fetch('/api/styles/check-name?name=' + encodeURIComponent(name) + '&exclude_id=' + styleId)
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        if(data.available){
+          status.innerHTML = '<span style="color:#4a7;">✓ 编号可用</span>';
+          nameAvailable = true;
+        } else {
+          status.innerHTML = '<span style="color:#c41e3a;">✗ 编号已被使用（款式 #' + data.existing_id + '）</span>';
+          nameAvailable = false;
+        }
+      });
+  }, 400);
+});
+
+// Prevent form submit if name not available
+document.getElementById('styleForm').addEventListener('submit', function(e){
+  if(!nameAvailable && document.getElementById('styleName').value.trim()){
+    e.preventDefault();
+    alert('编号已被使用，请换一个编号');
+    document.getElementById('styleName').focus();
+  }
+});
 </script>
 {% endblock %}

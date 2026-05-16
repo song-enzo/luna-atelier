@@ -478,24 +478,27 @@ def admin_styles():
                 style.fabric_id = int(fabric_id)
             except ValueError:
                 pass
-        if request.files.get('image') and allowed_file(request.files['image'].filename):
-            style.image_path = save_upload(request.files['image'], 'styles')
-        elif request.files.get('image') and request.files['image'].filename:
-            flash('主图格式不支持，请上传 JPG/PNG/WebP 格式', 'error')
-        # Multi-image gallery upload
-        if request.files.getlist('gallery_files'):
-            gallery_files = request.files.getlist('gallery_files')
-            gallery = []
+        # Images: single upload field "images" (multiple)
+        uploaded_files = request.files.getlist('images')
+        if uploaded_files and any(f.filename for f in uploaded_files):
+            saved_paths = []
             skipped = 0
-            for gf in gallery_files:
-                if gf and gf.filename and allowed_file(gf.filename):
-                    gallery.append(save_upload(gf, 'styles'))
-                elif gf and gf.filename:
+            for f in uploaded_files:
+                if f and f.filename and allowed_file(f.filename):
+                    saved_paths.append(save_upload(f, 'styles'))
+                elif f and f.filename:
                     skipped += 1
             if skipped:
-                flash(f'{skipped} 张图片因格式不支持被跳过（仅支持 JPG/PNG/WebP）', 'error')
-            if gallery:
-                style.gallery = json.dumps(gallery)
+                flash(f'{skipped} 张图片因格式不支持被跳过', 'error')
+            if saved_paths:
+                # First image becomes primary if no existing primary
+                if not style.image_path:
+                    style.image_path = saved_paths[0]
+                    saved_paths = saved_paths[1:]
+                if saved_paths:
+                    existing_gallery = json.loads(style.gallery or '[]')
+                    existing_gallery.extend(saved_paths)
+                    style.gallery = json.dumps(existing_gallery)
         db.session.add(style)
         db.session.commit()
         flash('款式添加成功', 'success')
@@ -529,23 +532,27 @@ def admin_style_edit(id):
     # Fabric
     fabric_id = request.form.get('fabric_id', '').strip()
     style.fabric_id = int(fabric_id) if fabric_id and fabric_id.isdigit() else None
-    if request.files.get('image') and allowed_file(request.files['image'].filename):
-        style.image_path = save_upload(request.files['image'], 'styles')
-    elif request.files.get('image') and request.files['image'].filename:
-        flash('主图格式不支持，请上传 JPG/PNG/WebP 格式', 'error')
-    # Multi-image gallery upload
-    if request.files.getlist('gallery_files'):
-        gallery_files = request.files.getlist('gallery_files')
-        existing_gallery = json.loads(style.gallery or '[]')
+    # Images: single upload field "images" (multiple)
+    uploaded_files = request.files.getlist('images')
+    if uploaded_files and any(f.filename for f in uploaded_files):
+        saved_paths = []
         skipped = 0
-        for gf in gallery_files:
-            if gf and gf.filename and allowed_file(gf.filename):
-                existing_gallery.append(save_upload(gf, 'styles'))
-            elif gf and gf.filename:
+        for f in uploaded_files:
+            if f and f.filename and allowed_file(f.filename):
+                saved_paths.append(save_upload(f, 'styles'))
+            elif f and f.filename:
                 skipped += 1
         if skipped:
-            flash(f'{skipped} 张图片因格式不支持被跳过（仅支持 JPG/PNG/WebP）', 'error')
-        style.gallery = json.dumps(existing_gallery)
+            flash(f'{skipped} 张图片因格式不支持被跳过', 'error')
+        if saved_paths:
+            # First image becomes primary if no existing primary
+            if not style.image_path:
+                style.image_path = saved_paths[0]
+                saved_paths = saved_paths[1:]
+            if saved_paths:
+                existing_gallery = json.loads(style.gallery or '[]')
+                existing_gallery.extend(saved_paths)
+                style.gallery = json.dumps(existing_gallery)
     db.session.commit()
     flash('款式已更新', 'success')
     return redirect(url_for('admin_styles'))
@@ -585,6 +592,54 @@ def admin_set_primary_image(id):
     style.image_path = data['image_path']
     db.session.commit()
     return jsonify({'success': True, 'image_path': style.image_path})
+
+@app.route('/admin/style/<int:id>/delete-image', methods=['POST'])
+@login_required
+def admin_delete_image(id):
+    if current_user.role != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    style = Style.query.get_or_404(id)
+    data = request.json
+    if not data or not data.get('image_path'):
+        return jsonify({'error': 'image_path required'}), 400
+    img_path = data['image_path']
+    # Remove from gallery or main image
+    if style.image_path == img_path:
+        style.image_path = None
+    else:
+        try:
+            gallery = json.loads(style.gallery or '[]')
+            if img_path in gallery:
+                gallery.remove(img_path)
+            style.gallery = json.dumps(gallery)
+        except:
+            pass
+    db.session.commit()
+    # Also delete physical file
+    full_path = os.path.join(app.config['UPLOAD_FOLDER'], img_path)
+    try:
+        if os.path.exists(full_path):
+            os.remove(full_path)
+    except:
+        pass
+    return jsonify({'success': True})
+
+@app.route('/api/styles/check-name', methods=['GET'])
+@login_required
+def api_check_name():
+    """Check if a style name is already taken. Returns {available: bool, existing_id: int|null}"""
+    name = request.args.get('name', '').strip()
+    exclude_id = request.args.get('exclude_id', type=int, default=0)
+    if not name:
+        return jsonify({'available': False, 'error': '名称不能为空'})
+    query = Style.query.filter(Style.name == name)
+    if exclude_id:
+        query = query.filter(Style.id != exclude_id)
+    existing = query.first()
+    return jsonify({
+        'available': existing is None,
+        'existing_id': existing.id if existing else None
+    })
 
 @app.route('/admin/style/<int:id>/toggle', methods=['POST'])
 @login_required
