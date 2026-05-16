@@ -58,15 +58,23 @@ def save_upload(file, subdir=''):
     name = f"{uuid.uuid4().hex}.{ext}"
     path = os.path.join(app.config['UPLOAD_FOLDER'], subdir, name)
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    # Auto-compress images: max width 1200px, quality 0.8
+    # Auto-compress images: max width 1200px, quality 0.8, maintain EXIF orientation
     try:
         img = PILImage.open(file)
+        # Apply EXIF orientation (fix phone portrait photos)
+        try:
+            from PIL import ImageOps
+            img = ImageOps.exif_transpose(img) or img
+        except Exception:
+            pass
         if img.mode in ('RGBA', 'LA', 'P'):
             img = img.convert('RGB')
         if img.width > 1200:
             ratio = 1200 / img.width
             img = img.resize((1200, int(img.height * ratio)), PILImage.LANCZOS)
-        img.save(path, 'JPEG' if ext.lower() in ('jpg', 'jpeg') else 'PNG', quality=80, optimize=True)
+        # Save with EXIF stripped (orientation already applied) — use original format
+        save_format = 'JPEG' if ext.lower() in ('jpg', 'jpeg') else 'PNG'
+        img.save(path, save_format, quality=85, optimize=True)
     except Exception:
         file.seek(0)
         file.save(path)

@@ -198,21 +198,25 @@ body{
 /* --- Orders List --- */
 .orders-wrap{background:#fff;min-height:100vh}
 .orders-list{padding:8px 16px;background:#fff}
-.order-item{
-  padding:14px 0;border-bottom:1px solid #f0f0f0;display:flex;gap:12px;cursor:pointer
+.order-item-wrap{
+  border-bottom:1px solid #f0f0f0;
 }
-.order-item:last-child{border-bottom:none}
+.order-item-wrap:last-child{border-bottom:none}
+.order-link{text-decoration:none;color:inherit;display:block}
+.order-item{
+  padding:16px 14px;display:flex;gap:14px;cursor:pointer
+}
 .order-item .thumb{
-  width:64px;height:64px;background:#f5f5f5;border-radius:2px;overflow:hidden;flex-shrink:0
+  width:90px;height:90px;background:#f5f5f5;border-radius:4px;overflow:hidden;flex-shrink:0
 }
 .order-item .thumb img{width:100%;height:100%;object-fit:cover}
-.order-item .detail{flex:1;min-width:0}
-.order-item .detail .title{font-size:13px;font-weight:500}
-.order-item .detail .order-no{font-size:11px;color:#bbb;margin-top:1px}
-.order-item .detail .qty{font-size:11px;color:#aaa;margin-top:2px}
+.order-item .detail{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
+.order-item .detail .title{font-size:15px;font-weight:600;color:#222}
+.order-item .detail .order-no{font-size:11px;color:#bbb;margin-top:2px}
+.order-item .detail .qty{font-size:12px;color:#999;margin-top:3px}
 .order-item .detail .confirm-btn{
-  margin-top:8px;padding:6px 14px;background:#111;color:#fff;border:none;
-  border-radius:2px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit
+  margin-top:10px;padding:10px 20px;background:#111;color:#fff;border:none;
+  border-radius:4px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit
 }
 
 /* Status Badges */
