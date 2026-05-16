@@ -55,9 +55,6 @@ def too_large(e):
 
 def save_upload(file, subdir=''):
     ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'jpg'
-    # Convert HEIC/HEIF to JPEG
-    if ext in ('heic', 'heif'):
-        ext = 'jpg'
     name = f"{uuid.uuid4().hex}.{ext}"
     path = os.path.join(app.config['UPLOAD_FOLDER'], subdir, name)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -69,7 +66,7 @@ def save_upload(file, subdir=''):
         if img.width > 1200:
             ratio = 1200 / img.width
             img = img.resize((1200, int(img.height * ratio)), PILImage.LANCZOS)
-        img.save(path, 'JPEG', quality=80, optimize=True)
+        img.save(path, 'JPEG' if ext.lower() in ('jpg', 'jpeg') else 'PNG', quality=80, optimize=True)
     except Exception:
         file.seek(0)
         file.save(path)
